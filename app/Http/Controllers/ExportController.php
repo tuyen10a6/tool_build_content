@@ -10,6 +10,13 @@ use ZipArchive;
 
 class ExportController extends Controller
 {
+    public function index()
+    {
+        return view('exports.index', [
+            'contents' => ContentItem::with('scenes')->get(),
+        ]);
+    }
+
     public function scene(Scene $scene)
     {
         $scene->load('content.category');

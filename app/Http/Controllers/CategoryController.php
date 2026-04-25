@@ -8,6 +8,13 @@ use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
+    public function index()
+    {
+        return view('categories.index', [
+            'categories' => Category::withCount('contents')->get(),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -47,6 +54,6 @@ class CategoryController extends Controller
     {
         $category->delete();
 
-        return redirect()->route('dashboard')->with('status', 'Đã xóa danh mục và dữ liệu liên quan.');
+        return redirect()->route('categories.index')->with('status', 'Đã xóa danh mục và dữ liệu liên quan.');
     }
 }

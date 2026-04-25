@@ -71,12 +71,11 @@
                     <span>Build Content</span>
                 </div>
             </div>
-            <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">📁 Dashboard</a>
-            <a href="{{ route('dashboard') }}#categories" class="nav-item">🗂️ Danh mục</a>
-            <a href="{{ route('dashboard') }}#contents" class="nav-item">📄 Content</a>
-            <a href="{{ route('dashboard') }}#preview" class="nav-item">▶️ Xem trước</a>
-            <a href="{{ route('dashboard') }}#export" class="nav-item">📦 Xuất file</a>
-            <a href="{{ route('dashboard') }}#settings" class="nav-item">⚙️ Setting</a>
+            <a href="{{ route('categories.index') }}" class="nav-item {{ request()->routeIs('categories.*') ? 'active' : '' }}">🗂️ Danh mục</a>
+            <a href="{{ route('contents.index') }}" class="nav-item {{ request()->routeIs('contents.*', 'scenes.*') ? 'active' : '' }}">📄 Content</a>
+            <a href="{{ route('preview.index') }}" class="nav-item {{ request()->routeIs('preview.*') ? 'active' : '' }}">▶️ Xem trước</a>
+            <a href="{{ route('exports.index') }}" class="nav-item {{ request()->routeIs('exports.*') ? 'active' : '' }}">📦 Xuất file</a>
+            <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">⚙️ Setting</a>
         </aside>
         <main class="main-content">
             @if (session('status'))

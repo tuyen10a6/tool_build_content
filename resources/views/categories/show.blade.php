@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="header">
-        <a class="btn btn-secondary" href="{{ route('dashboard') }}">← Quay lại</a>
+        <a class="btn btn-secondary" href="{{ route('categories.index') }}">← Quay lại</a>
     </div>
     <div class="card">
         <div class="detail-title">{{ $category->name }}</div>

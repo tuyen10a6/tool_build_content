@@ -9,6 +9,14 @@ use Illuminate\Http\Request;
 
 class ContentController extends Controller
 {
+    public function index()
+    {
+        return view('contents.index', [
+            'categories' => Category::orderBy('name')->get(),
+            'contents' => ContentItem::with(['category', 'scenes'])->withCount('scenes')->get(),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -49,6 +57,6 @@ class ContentController extends Controller
     {
         $content->delete();
 
-        return redirect()->route('dashboard')->with('status', 'Đã xóa content.');
+        return redirect()->route('contents.index')->with('status', 'Đã xóa content.');
     }
 }
