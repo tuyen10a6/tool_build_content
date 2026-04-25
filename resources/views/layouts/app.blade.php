@@ -6,18 +6,24 @@
     <title>@yield('title', 'Build Content Tool')</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
-        :root { --primary: #d97706; --primary-light: #f59e0b; --bg-dark: #111315; --bg-card: #1b1f22; --bg-card-hover: #252b30; --border: #31393f; --text: #f6f3ef; --text-muted: #a8b0b7; --danger: #ef4444; --success: #16a34a; --warning: #f59e0b; --preview-bg: #000000; --preview-fg: #f6f3ef; --sidebar-bg: rgba(27, 31, 34, 0.94); --card-bg: rgba(27, 31, 34, 0.92); --input-bg: #101315; --tag-bg: #14181b; --shadow: 0 20px 40px rgba(0, 0, 0, 0.2); }
+        :root { --primary: #d97706; --primary-light: #f59e0b; --bg-dark: #111315; --bg-card: #1b1f22; --bg-card-hover: #252b30; --border: #31393f; --text: #f6f3ef; --text-muted: #a8b0b7; --danger: #ef4444; --success: #16a34a; --warning: #f59e0b; --preview-bg: #000000; --preview-fg: #f6f3ef; --sidebar-bg: rgba(27, 31, 34, 0.94); --card-bg: rgba(27, 31, 34, 0.92); --input-bg: #101315; --tag-bg: #14181b; --accent-soft: rgba(245, 158, 11, 0.15); --accent-border: rgba(245, 158, 11, 0.35); --accent-text: #ffd08a; --shadow: 0 20px 40px rgba(0, 0, 0, 0.2); }
         body { background: radial-gradient(circle at top, #20262b 0%, var(--bg-dark) 55%); color: var(--text); min-height: 100vh; transition: background 0.2s ease, color 0.2s ease; }
-        body[data-app-theme="light"] { --bg-dark: #f4f7fb; --bg-card: #ffffff; --bg-card-hover: #eef3f8; --border: #d7dee8; --text: #101828; --text-muted: #475467; --preview-bg: #ffffff; --preview-fg: #101828; --sidebar-bg: rgba(255, 255, 255, 0.96); --card-bg: rgba(255, 255, 255, 0.96); --input-bg: #ffffff; --tag-bg: #eef2f6; --shadow: 0 16px 36px rgba(15, 23, 42, 0.10); background: linear-gradient(180deg, #ffffff 0%, #eef4fa 100%); }
+        body[data-app-theme="light"] { --bg-dark: #f4f7fb; --bg-card: #ffffff; --bg-card-hover: #eef3f8; --border: #d7dee8; --text: #101828; --text-muted: #475467; --preview-bg: #ffffff; --preview-fg: #101828; --sidebar-bg: rgba(255, 255, 255, 0.96); --card-bg: rgba(255, 255, 255, 0.96); --input-bg: #ffffff; --tag-bg: #eef2f6; --accent-soft: rgba(217, 119, 6, 0.10); --accent-border: rgba(217, 119, 6, 0.22); --accent-text: #b45309; --shadow: 0 16px 36px rgba(15, 23, 42, 0.10); background: linear-gradient(180deg, #ffffff 0%, #eef4fa 100%); }
         a { color: inherit; text-decoration: none; }
         .app { display: flex; min-height: 100vh; }
         .sidebar { width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; position: sticky; top: 0; height: 100vh; backdrop-filter: blur(10px); }
+        .mobile-topbar { display: none; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--sidebar-bg); position: sticky; top: 0; z-index: 20; backdrop-filter: blur(10px); }
+        .mobile-topbar .logo { font-size: 16px; }
         .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
         .logo { font-size: 18px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 10px; }
         .logo-icon { width: 34px; height: 34px; background: linear-gradient(135deg, var(--primary), #fb923c); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
         .nav-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; color: var(--text-muted); border-left: 3px solid transparent; }
         .nav-item.active, .nav-item:hover { background: var(--bg-card-hover); color: var(--text); border-left-color: var(--primary); }
         .main-content { flex: 1; padding: 28px; }
+        .mobile-nav { display: none; position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--border); background: var(--sidebar-bg); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+        .mobile-nav-item { min-width: 0; padding: 10px 6px; border-radius: 12px; display: grid; justify-items: center; gap: 4px; color: var(--text-muted); font-size: 11px; font-weight: 600; text-align: center; }
+        .mobile-nav-item.active { background: var(--bg-card-hover); color: var(--text); }
+        .mobile-nav-icon { font-size: 16px; line-height: 1; }
         .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
         .page-title, .detail-title { font-size: 28px; font-weight: 700; }
         .detail-desc, .muted { color: var(--text-muted); }
@@ -37,7 +43,7 @@
         .list-item-desc, .scene-details { color: var(--text-muted); font-size: 13px; }
         .list-item-meta, .scene-details { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
         .tag { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; background: var(--tag-bg); color: var(--text-muted); border: 1px solid var(--border); }
-        .tag-primary { background: rgba(245, 158, 11, 0.15); color: var(--primary); border-color: rgba(245, 158, 11, 0.35); }
+        .tag-primary { background: var(--accent-soft); color: var(--primary); border-color: var(--accent-border); }
         .form-group { margin-bottom: 16px; }
         .form-label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
         .form-input { width: 100%; padding: 12px 14px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; }
@@ -53,7 +59,7 @@
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
         .tab { padding: 10px 16px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); background: transparent; }
-        .tab.active { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.15); color: #ffd08a; }
+        .tab.active { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-text); }
         .detail-stats { display: flex; gap: 20px; margin-top: 16px; flex-wrap: wrap; }
         .stat-item { display: flex; align-items: baseline; gap: 8px; }
         .stat-value { font-size: 20px; font-weight: 700; }
@@ -69,10 +75,17 @@
         .toast-error .toast-title { color: var(--danger); }
         .toast-hide { opacity: 0; transform: translateY(-8px); transition: opacity 0.2s ease, transform 0.2s ease; }
         @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-        @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } .sidebar { display: none; } .main-content { padding: 20px; } }
+        @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } .sidebar { display: none; } .mobile-topbar { display: block; } .mobile-nav { display: grid; } .main-content { padding: 20px 20px 96px; } }
+        @media (max-width: 640px) { .main-content { padding: 16px 16px 104px; } .card { padding: 16px; border-radius: 14px; } .page-title, .detail-title { font-size: 24px; line-height: 1.15; } .header { margin-bottom: 18px; } .btn { width: 100%; justify-content: center; } .header .btn { width: auto; } .mobile-nav-item { font-size: 10px; } }
     </style>
 </head>
 <body data-app-theme="{{ $appTheme ?? 'dark' }}">
+    <div class="mobile-topbar">
+        <div class="logo">
+            <div class="logo-icon">🎬</div>
+            <span>Build Content</span>
+        </div>
+    </div>
     <div class="app">
         <aside class="sidebar">
             <div class="sidebar-header">
@@ -91,6 +104,28 @@
             @yield('content')
         </main>
     </div>
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+        <a href="{{ route('categories.index') }}" class="mobile-nav-item {{ request()->routeIs('categories.*') ? 'active' : '' }}">
+            <span class="mobile-nav-icon">🗂️</span>
+            <span>Danh mục</span>
+        </a>
+        <a href="{{ route('contents.index') }}" class="mobile-nav-item {{ request()->routeIs('contents.*', 'scenes.*') ? 'active' : '' }}">
+            <span class="mobile-nav-icon">📄</span>
+            <span>Content</span>
+        </a>
+        <a href="{{ route('preview.index') }}" class="mobile-nav-item {{ request()->routeIs('preview.*') ? 'active' : '' }}">
+            <span class="mobile-nav-icon">▶️</span>
+            <span>Xem trước</span>
+        </a>
+        <a href="{{ route('exports.index') }}" class="mobile-nav-item {{ request()->routeIs('exports.*') ? 'active' : '' }}">
+            <span class="mobile-nav-icon">📦</span>
+            <span>Xuất file</span>
+        </a>
+        <a href="{{ route('settings.index') }}" class="mobile-nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+            <span class="mobile-nav-icon">⚙️</span>
+            <span>Setting</span>
+        </a>
+    </nav>
     <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
     <script>
         (() => {
