@@ -6,6 +6,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\PreviewController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SceneController;
+use App\Http\Controllers\TransitionTemplateController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/categories');
@@ -24,6 +25,11 @@ Route::post('/contents', [ContentController::class, 'store'])->name('contents.st
 Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
 Route::put('/contents/{content}', [ContentController::class, 'update'])->name('contents.update');
 Route::delete('/contents/{content}', [ContentController::class, 'destroy'])->name('contents.destroy');
+Route::get('/transition-templates', [TransitionTemplateController::class, 'index'])->name('transition-templates.index');
+Route::post('/transition-templates', [TransitionTemplateController::class, 'store'])->name('transition-templates.store');
+Route::delete('/transition-templates/{transitionTemplate}', [TransitionTemplateController::class, 'destroy'])->name('transition-templates.destroy');
+Route::get('/transition-templates/{transitionTemplate}/gif', [TransitionTemplateController::class, 'gif'])->name('transition-templates.media.gif');
+Route::get('/transition-templates/{transitionTemplate}/audio', [TransitionTemplateController::class, 'audio'])->name('transition-templates.media.audio');
 
 Route::get('/preview', [PreviewController::class, 'index'])->name('preview.index');
 Route::post('/contents/{content}/scenes', [SceneController::class, 'store'])->name('scenes.store');

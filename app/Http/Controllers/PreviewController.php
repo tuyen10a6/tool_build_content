@@ -9,7 +9,7 @@ class PreviewController extends Controller
     public function index()
     {
         return view('preview.index', [
-            'contents' => ContentItem::with(['category', 'scenes'])->withCount('scenes')->get(),
+            'contents' => ContentItem::with(['category', 'scenes' => fn ($query) => $query->orderBy('sort_order')->orderBy('position')])->withCount('scenes')->get(),
         ]);
     }
 }

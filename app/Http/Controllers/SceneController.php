@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ContentItem;
 use App\Models\Scene;
+use App\Models\TransitionTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -42,10 +43,11 @@ class SceneController extends Controller
 
     public function show(Scene $scene)
     {
-        $scene->load('content.category');
+        $scene->load(['content.category', 'nextTransitionTemplate', 'transitionTemplate', 'fromScene', 'toScene']);
 
         return view('scenes.show', [
             'scene' => $scene,
+            'transitionTemplates' => TransitionTemplate::query()->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -53,57 +55,69 @@ class SceneController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'gif' => ['nullable', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
+            'gif' => ['required', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
             'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
-            'duration_seconds' => ['required', 'integer', 'min:1', 'max:3600'],
+            'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
+            'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
         ]);
 
         $scene = new Scene([
+            'scene_type' => 'main',
             'name' => $validated['name'],
-            'duration_seconds' => $validated['duration_seconds'],
-            'position' => ((int) $content->scenes()->max('position')) + 1,
+            'position' => ((int) $content->mainScenes()->max('position')) + 1,
+            'sort_order' => ((int) $content->scenes()->max('sort_order')) + 1,
+            'next_transition_template_id' => $validated['next_transition_template_id'] ?? null,
         ]);
 
-        $this->persistMedia($request, $scene);
+        $this->persistMainSceneMedia($request, $scene, $validated);
         $content->scenes()->save($scene);
+        $this->rebuildTransitions($content->fresh());
 
         return redirect()->route('contents.show', $content)->with('status', 'Tạo phân cảnh thành công.');
     }
 
     public function update(Request $request, Scene $scene): RedirectResponse
     {
+        if ($scene->isTransition()) {
+            return back()->with('status', 'Phân cảnh chuyển tiếp được quản lý từ mẫu chuyển tiếp và thứ tự phân cảnh chính.');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'gif' => ['nullable', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
             'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
-            'duration_seconds' => ['required', 'integer', 'min:1', 'max:3600'],
+            'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
             'position' => ['required', 'integer', 'min:1'],
             'remove_audio' => ['nullable', 'boolean'],
+            'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
         ]);
 
         $content = $scene->content;
         $oldPosition = $scene->position;
-        $newPosition = min($validated['position'], max($content->scenes()->count(), 1));
+        $newPosition = min($validated['position'], max($content->mainScenes()->count(), 1));
 
         $scene->fill([
             'name' => $validated['name'],
-            'duration_seconds' => $validated['duration_seconds'],
             'position' => $newPosition,
+            'next_transition_template_id' => $validated['next_transition_template_id'] ?? null,
         ]);
 
-        $this->persistMedia($request, $scene, true);
+        $this->persistMainSceneMedia($request, $scene, $validated, true);
 
         if ($request->boolean('remove_audio') && ! $request->hasFile('audio') && $scene->audio_path) {
             Storage::disk('public')->delete($scene->audio_path);
             $scene->audio_path = null;
             $scene->audio_original_name = null;
+            $scene->duration_seconds = $validated['duration_seconds'] ?? $scene->duration_seconds;
         }
 
         $scene->save();
 
         if ($oldPosition !== $newPosition) {
-            $this->normalizePositions($content, $scene->id, $newPosition);
+            $this->normalizeMainPositions($content, $scene->id, $newPosition);
         }
+
+        $this->rebuildTransitions($content->fresh());
 
         return redirect()->route('scenes.show', $scene)->with('status', 'Cập nhật phân cảnh thành công.');
     }
@@ -112,18 +126,41 @@ class SceneController extends Controller
     {
         $content = $scene->content;
 
-        $this->deleteMedia($scene);
-        $scene->delete();
-        $this->normalizeAfterDelete($content);
+        if ($scene->isMain()) {
+            $this->deleteMedia($scene);
+            $scene->delete();
+            $this->normalizeAfterDelete($content);
+            $this->rebuildTransitions($content->fresh());
 
-        return redirect()->route('contents.show', $content)->with('status', 'Đã xóa phân cảnh.');
+            return redirect()->route('contents.show', $content)->with('status', 'Đã xóa phân cảnh.');
+        }
+
+        if ($scene->fromScene) {
+            $scene->fromScene->update(['next_transition_template_id' => null]);
+        }
+
+        $scene->delete();
+        $this->rebuildTransitions($content->fresh());
+
+        return redirect()->route('contents.show', $content)->with('status', 'Đã bỏ phân cảnh chuyển tiếp.');
     }
 
     public function duplicate(Scene $scene): RedirectResponse
     {
-        $copy = $scene->replicate();
+        if ($scene->isTransition()) {
+            return back()->with('status', 'Không nhân bản trực tiếp phân cảnh chuyển tiếp. Hãy nhân bản phân cảnh chính hoặc dùng mẫu chuyển tiếp.');
+        }
+
+        $copy = $scene->replicate([
+            'sort_order',
+            'position_label',
+            'from_scene_id',
+            'to_scene_id',
+            'transition_template_id',
+        ]);
         $copy->name = $scene->name.' (Copy)';
-        $copy->position = ((int) $scene->content->scenes()->max('position')) + 1;
+        $copy->position = ((int) $scene->content->mainScenes()->max('position')) + 1;
+        $copy->sort_order = ((int) $scene->content->scenes()->max('sort_order')) + 1;
 
         if ($scene->gif_path) {
             $copy->gif_path = $this->duplicateFile($scene->gif_path, 'scenes/gifs');
@@ -134,11 +171,12 @@ class SceneController extends Controller
         }
 
         $copy->save();
+        $this->rebuildTransitions($scene->content->fresh());
 
         return redirect()->route('contents.show', $scene->content)->with('status', 'Đã nhân bản phân cảnh.');
     }
 
-    private function persistMedia(Request $request, Scene $scene, bool $replace = false): void
+    private function persistMainSceneMedia(Request $request, Scene $scene, array $validated, bool $replace = false): void
     {
         if ($request->hasFile('gif')) {
             if ($replace && $scene->gif_path) {
@@ -164,7 +202,14 @@ class SceneController extends Controller
                 'public'
             );
             $scene->audio_original_name = $request->file('audio')->getClientOriginalName();
+            $scene->duration_seconds = $this->extractAudioDuration(
+                $request->file('audio')->getRealPath()
+            ) ?? ($validated['duration_seconds'] ?? $scene->duration_seconds ?? 3);
+
+            return;
         }
+
+        $scene->duration_seconds = $validated['duration_seconds'] ?? $scene->duration_seconds ?? 3;
     }
 
     private function deleteMedia(Scene $scene): void
@@ -187,9 +232,9 @@ class SceneController extends Controller
         return $copyPath;
     }
 
-    private function normalizePositions(ContentItem $content, int $sceneId, int $newPosition): void
+    private function normalizeMainPositions(ContentItem $content, int $sceneId, int $newPosition): void
     {
-        $orderedScenes = $content->scenes()->whereKeyNot($sceneId)->orderBy('position')->get();
+        $orderedScenes = $content->mainScenes()->whereKeyNot($sceneId)->orderBy('position')->get();
         $position = 1;
         $inserted = false;
 
@@ -206,9 +251,61 @@ class SceneController extends Controller
 
     private function normalizeAfterDelete(ContentItem $content): void
     {
-        foreach ($content->scenes()->orderBy('position')->get() as $index => $item) {
+        foreach ($content->mainScenes()->orderBy('position')->get() as $index => $item) {
             $item->update(['position' => $index + 1]);
         }
+    }
+
+    private function rebuildTransitions(ContentItem $content): void
+    {
+        $mainScenes = $content->mainScenes()->with('nextTransitionTemplate')->get()->values();
+
+        $content->scenes()->where('scene_type', 'transition')->delete();
+
+        $sortOrder = 1;
+
+        foreach ($mainScenes as $index => $scene) {
+            $scene->update([
+                'sort_order' => $sortOrder++,
+                'position_label' => (string) $scene->position,
+            ]);
+
+            $nextScene = $mainScenes->get($index + 1);
+            $template = $scene->nextTransitionTemplate;
+
+            if (! $nextScene || ! $template) {
+                continue;
+            }
+
+            $content->scenes()->create([
+                'scene_type' => 'transition',
+                'name' => $template->name,
+                'gif_path' => $template->gif_path,
+                'gif_original_name' => $template->gif_original_name,
+                'audio_path' => $template->audio_path,
+                'audio_original_name' => $template->audio_original_name,
+                'duration_seconds' => $template->duration_seconds,
+                'position' => $scene->position,
+                'sort_order' => $sortOrder++,
+                'position_label' => $scene->position.'-'.$nextScene->position,
+                'from_scene_id' => $scene->id,
+                'to_scene_id' => $nextScene->id,
+                'transition_template_id' => $template->id,
+            ]);
+        }
+    }
+
+    private function extractAudioDuration(string $path): ?int
+    {
+        $command = sprintf(
+            'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s',
+            escapeshellarg($path)
+        );
+
+        $output = shell_exec($command);
+        $duration = is_string($output) ? (float) trim($output) : 0;
+
+        return $duration > 0 ? (int) ceil($duration) : null;
     }
 
     private function safeFilename(string $filename): string

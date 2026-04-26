@@ -24,6 +24,11 @@ class ContentItem extends Model
 
     public function scenes(): HasMany
     {
-        return $this->hasMany(Scene::class)->orderBy('position');
+        return $this->hasMany(Scene::class)->orderBy('sort_order')->orderBy('position');
+    }
+
+    public function mainScenes(): HasMany
+    {
+        return $this->hasMany(Scene::class)->where('scene_type', 'main')->orderBy('position');
     }
 }

@@ -13,7 +13,7 @@ class ExportController extends Controller
     public function index()
     {
         return view('exports.index', [
-            'contents' => ContentItem::with('scenes')->get(),
+            'contents' => ContentItem::with(['scenes' => fn ($query) => $query->orderBy('sort_order')->orderBy('position')])->get(),
         ]);
     }
 
@@ -44,8 +44,13 @@ class ExportController extends Controller
         $folder = $this->safeName($content->name);
         $zip->addFromString($folder.'/content.md', $this->contentMarkdown($content));
 
-        foreach ($content->scenes as $index => $scene) {
-            $sceneFolder = $folder.'/'.str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT).'-'.$this->safeName($scene->name);
+        $orderedScenes = $content->scenes->sortBy([
+            ['sort_order', 'asc'],
+            ['position', 'asc'],
+        ])->values();
+
+        foreach ($orderedScenes as $scene) {
+            $sceneFolder = $folder.'/'.$this->safeName($scene->position_label ?: (string) $scene->position);
             $zip->addFromString($sceneFolder.'/scene.md', $this->sceneMarkdown($scene));
             $this->addMedia($zip, $sceneFolder, $scene);
         }
@@ -73,8 +78,9 @@ class ExportController extends Controller
             '',
             '- Content: '.$scene->content->name,
             '- Danh mục: '.$scene->content->category->name,
-            '- Thứ tự: '.$scene->position,
-            '- Thời gian hiển thị GIF: '.$scene->duration_seconds.' giây',
+            '- Kiểu: '.($scene->scene_type === 'transition' ? 'Chuyển tiếp' : 'Phân cảnh chính'),
+            '- Thứ tự: '.($scene->position_label ?: $scene->position),
+            '- Duration: '.$scene->duration_seconds.' giây',
             '- GIF: '.($scene->gif_original_name ?: 'Không có'),
             '- Audio: '.($scene->audio_original_name ?: 'Không có'),
         ]);
@@ -87,17 +93,22 @@ class ExportController extends Controller
             '',
             '- Danh mục: '.$content->category->name,
             '- Mô tả: '.($content->description ?: 'Không có'),
-            '- Số phân cảnh: '.$content->scenes->count(),
+            '- Số phân cảnh chính: '.$content->scenes->where('scene_type', 'main')->count(),
+            '- Tổng số thư mục xuất: '.$content->scenes->count(),
             '',
-            '## Danh sách phân cảnh',
+            '## Danh sách thư mục xuất',
             '',
         ];
 
-        foreach ($content->scenes as $scene) {
+        foreach ($content->scenes->sortBy([
+            ['sort_order', 'asc'],
+            ['position', 'asc'],
+        ]) as $scene) {
             $lines[] = sprintf(
-                '%d. %s | GIF: %s | Audio: %s | %d giây',
-                $scene->position,
+                '%s. %s | %s | GIF: %s | Audio: %s | %d giây',
+                $scene->position_label ?: $scene->position,
                 $scene->name,
+                $scene->scene_type === 'transition' ? 'Chuyển tiếp' : 'Chính',
                 $scene->gif_original_name ?: 'Không có',
                 $scene->audio_original_name ?: 'Không có',
                 $scene->duration_seconds

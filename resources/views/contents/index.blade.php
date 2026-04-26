@@ -10,6 +10,10 @@
                 <p class="muted">Mỗi content thuộc một danh mục và chứa nhiều phân cảnh.</p>
             </div>
         </div>
+        <div class="tabs" style="margin-top: 20px;">
+            <a class="tab tab-link active" href="{{ route('contents.index') }}">Danh sách content</a>
+            <a class="tab tab-link" href="{{ route('transition-templates.index') }}">Mẫu chuyển tiếp</a>
+        </div>
         <div class="grid grid-2" style="margin-top: 20px;">
             <div class="card">
                 <div class="card-header">

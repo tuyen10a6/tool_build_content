@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\ContentItem;
+use App\Models\TransitionTemplate;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -32,11 +33,16 @@ class ContentController extends Controller
 
     public function show(ContentItem $content)
     {
-        $content->load(['category', 'scenes']);
+        $content->load([
+            'category',
+            'scenes',
+            'mainScenes.nextTransitionTemplate',
+        ]);
 
         return view('contents.show', [
             'content' => $content,
             'categories' => Category::orderBy('name')->get(),
+            'transitionTemplates' => TransitionTemplate::query()->where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
