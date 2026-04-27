@@ -61,7 +61,7 @@
                 <button class="btn btn-danger" type="submit" onclick="return confirm('Xóa content này?')">Xóa content</button>
             </form>
         </div>
-        <div class="card">
+        <div style="margin-top: 0px " class="card">
             <div class="card-header">
                 <h3 class="card-title">Tạo phân cảnh chính mới</h3>
             </div>
@@ -92,7 +92,35 @@
                             <option value="{{ $template->id }}">{{ $template->name }} ({{ $template->duration_seconds }}s)</option>
                         @endforeach
                     </select>
+                    <div class="muted" style="margin-top: 8px;">Có thể chọn từ thư viện mẫu, hoặc tạo mới ngay bên dưới cho riêng cảnh này.</div>
                 </div>
+                <hr style="margin: 30px 0;">
+                <details class="card details-card" style="margin-bottom: 16px;">
+                    <summary>Tạo nhanh phân cảnh chuyển tiếp mới cho cảnh này</summary>
+                    <div class="details-card-body">
+                        <div class="form-group" style="margin-top: 16px;">
+                            <label class="form-label">Tên chuyển tiếp mới</label>
+                            <input class="form-input" type="text" name="transition_name" value="{{ old('transition_name') }}" placeholder="Ví dụ: Màn đen 3s riêng cho cảnh này">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Mô tả chuyển tiếp</label>
+                            <textarea class="form-input" name="transition_description" placeholder="Mô tả ngắn nếu cần">{{ old('transition_description') }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">GIF chuyển tiếp</label>
+                            <input class="form-input" type="file" name="transition_gif" accept=".gif,.jpg,.jpeg,.png,.webp">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Audio chuyển tiếp</label>
+                            <input class="form-input" type="file" name="transition_audio" accept="audio/*">
+                            <div class="muted" style="margin-top: 8px;">Nếu có audio, thời lượng chuyển tiếp sẽ tự lấy đúng theo thời lượng audio.</div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Duration khi không có audio</label>
+                            <input class="form-input" type="number" min="1" max="3600" name="transition_duration_seconds" value="{{ old('transition_duration_seconds', 3) }}">
+                        </div>
+                    </div>
+                </details>
                 <button class="btn btn-primary" type="submit">+ Tạo phân cảnh</button>
             </form>
         </div>

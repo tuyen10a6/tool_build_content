@@ -45,9 +45,20 @@ class SceneController extends Controller
     {
         $scene->load(['content.category', 'nextTransitionTemplate', 'transitionTemplate', 'fromScene', 'toScene']);
 
+        $transitionTemplates = TransitionTemplate::query()
+            ->where(function ($query) use ($scene) {
+                $query->where('is_active', true);
+
+                if ($scene->next_transition_template_id) {
+                    $query->orWhere('id', $scene->next_transition_template_id);
+                }
+            })
+            ->orderBy('name')
+            ->get();
+
         return view('scenes.show', [
             'scene' => $scene,
-            'transitionTemplates' => TransitionTemplate::query()->where('is_active', true)->orderBy('name')->get(),
+            'transitionTemplates' => $transitionTemplates,
         ]);
     }
 
@@ -59,14 +70,29 @@ class SceneController extends Controller
             'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
             'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
             'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
+            'transition_name' => ['nullable', 'string', 'max:255'],
+            'transition_description' => ['nullable', 'string'],
+            'transition_gif' => ['nullable', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
+            'transition_audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
+            'transition_duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
         ]);
+
+        $transitionTemplateId = $validated['next_transition_template_id'] ?? null;
+
+        if ($this->hasInlineTransitionTemplateData($request, $validated)) {
+            $request->validate([
+                'transition_name' => ['required', 'string', 'max:255'],
+            ]);
+
+            $transitionTemplateId = $this->createInlineTransitionTemplate($request, $validated)->id;
+        }
 
         $scene = new Scene([
             'scene_type' => 'main',
             'name' => $validated['name'],
             'position' => ((int) $content->mainScenes()->max('position')) + 1,
             'sort_order' => ((int) $content->scenes()->max('sort_order')) + 1,
-            'next_transition_template_id' => $validated['next_transition_template_id'] ?? null,
+            'next_transition_template_id' => $transitionTemplateId,
         ]);
 
         $this->persistMainSceneMedia($request, $scene, $validated);
@@ -210,6 +236,49 @@ class SceneController extends Controller
         }
 
         $scene->duration_seconds = $validated['duration_seconds'] ?? $scene->duration_seconds ?? 3;
+    }
+
+    private function hasInlineTransitionTemplateData(Request $request, array $validated): bool
+    {
+        return $request->hasFile('transition_gif')
+            || $request->hasFile('transition_audio')
+            || filled($validated['transition_name'] ?? null)
+            || filled($validated['transition_description'] ?? null);
+    }
+
+    private function createInlineTransitionTemplate(Request $request, array $validated): TransitionTemplate
+    {
+        $template = new TransitionTemplate([
+            'name' => $validated['transition_name'],
+            'description' => $validated['transition_description'] ?? null,
+            'duration_seconds' => $validated['transition_duration_seconds'] ?? 3,
+            'is_active' => false,
+        ]);
+
+        if ($request->hasFile('transition_gif')) {
+            $template->gif_path = $request->file('transition_gif')->storeAs(
+                'transition-templates/gifs',
+                Str::uuid().'.'.$request->file('transition_gif')->getClientOriginalExtension(),
+                'public'
+            );
+            $template->gif_original_name = $request->file('transition_gif')->getClientOriginalName();
+        }
+
+        if ($request->hasFile('transition_audio')) {
+            $template->audio_path = $request->file('transition_audio')->storeAs(
+                'transition-templates/audios',
+                Str::uuid().'.'.$request->file('transition_audio')->getClientOriginalExtension(),
+                'public'
+            );
+            $template->audio_original_name = $request->file('transition_audio')->getClientOriginalName();
+            $template->duration_seconds = $this->extractAudioDuration(
+                $request->file('transition_audio')->getRealPath()
+            ) ?? $template->duration_seconds;
+        }
+
+        $template->save();
+
+        return $template;
     }
 
     private function deleteMedia(Scene $scene): void

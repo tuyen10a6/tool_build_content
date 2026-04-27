@@ -36,9 +36,10 @@
                     <div class="form-group">
                         <label class="form-label">Audio</label>
                         <input class="form-input" type="file" name="audio" accept="audio/*">
+                    
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Duration fallback khi không có audio</label>
+                        <label class="form-label">Duration khi không có audio</label>
                         <input class="form-input" type="number" name="duration_seconds" min="1" max="3600" value="{{ old('duration_seconds', 3) }}">
                     </div>
                     <button class="btn btn-primary" type="submit">+ Tạo mẫu chuyển tiếp</button>
