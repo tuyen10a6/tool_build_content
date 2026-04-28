@@ -3,6 +3,40 @@
 @section('title', 'Xem trước')
 
 @section('content')
+    <style>
+        .preview-stage {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .preview-stage-image,
+        .preview-stage-placeholder {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .preview-stage-image {
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.18s ease;
+        }
+
+        .preview-stage-image.is-visible {
+            opacity: 1;
+        }
+
+        .preview-stage-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--text-muted);
+            padding: 16px;
+        }
+    </style>
     <section class="card">
         <div class="header" style="margin-bottom: 0;">
             <div>
@@ -25,7 +59,10 @@
             </div>
             <div class="card">
                 <div class="preview-screen" id="preview-screen">
-                    <div class="muted" style="text-align: center;">Chọn content để xem trước</div>
+                    <div class="preview-stage">
+                        <img class="preview-stage-image" id="preview-stage-image" alt="">
+                        <div class="preview-stage-placeholder" id="preview-stage-placeholder">Chọn content để xem trước</div>
+                    </div>
                 </div>
                 <div class="preview-controls">
                     <button class="btn btn-secondary" type="button" id="preview-prev">◀ Trước</button>
@@ -51,10 +88,14 @@
             remainingMs: 0,
             startedAt: null,
             pausedAudioTime: 0,
+            imageCache: new Map(),
+            audioCache: new Map(),
         };
         const previewContentSelect = document.getElementById('preview-content-select');
         const previewSceneList = document.getElementById('preview-scenes-list');
         const previewScreen = document.getElementById('preview-screen');
+        const previewStageImage = document.getElementById('preview-stage-image');
+        const previewStagePlaceholder = document.getElementById('preview-stage-placeholder');
         const previewPlay = document.getElementById('preview-play');
         const previewStop = document.getElementById('preview-stop');
         window.togglePreviewButtons(previewPlay, previewStop, false);
@@ -73,6 +114,74 @@
             }
 
             return Math.max(0, Math.ceil((previewState.remainingMs || (scene.duration_seconds || 3) * 1000) / 1000));
+        }
+
+        function primeSceneMedia(scene) {
+            if (!scene) {
+                return;
+            }
+
+            if (scene.gif_url && !previewState.imageCache.has(scene.gif_url)) {
+                const image = new Image();
+                const ready = new Promise((resolve) => {
+                    image.onload = () => resolve(image);
+                    image.onerror = () => resolve(null);
+                });
+
+                image.decoding = 'async';
+                image.src = scene.gif_url;
+                previewState.imageCache.set(scene.gif_url, ready);
+            }
+
+            if (scene.audio_url && !previewState.audioCache.has(scene.audio_url)) {
+                const audio = new Audio();
+                audio.preload = 'auto';
+                audio.src = scene.audio_url;
+                previewState.audioCache.set(scene.audio_url, audio);
+            }
+        }
+
+        function primeNearbyScenes() {
+            primeSceneMedia(currentScene());
+            primeSceneMedia(previewState.sequence[previewState.index + 1] || null);
+            primeSceneMedia(previewState.sequence[previewState.index - 1] || null);
+        }
+
+        async function showSceneImage(scene) {
+            if (!scene?.gif_url) {
+                previewStageImage.classList.remove('is-visible');
+                previewStageImage.removeAttribute('src');
+                previewStageImage.alt = '';
+                previewStagePlaceholder.innerHTML = `${scene?.name || 'Không có phân cảnh để xem.'}<br>${scene ? 'Chưa có GIF' : ''}`.trim();
+                previewStagePlaceholder.style.display = 'flex';
+                return;
+            }
+
+            primeSceneMedia(scene);
+            const loadedImage = await previewState.imageCache.get(scene.gif_url);
+
+            if (currentScene()?.gif_url !== scene.gif_url) {
+                return;
+            }
+
+            if (!loadedImage) {
+                previewStageImage.classList.remove('is-visible');
+                previewStageImage.removeAttribute('src');
+                previewStagePlaceholder.innerHTML = `${scene.name}<br>Không tải được GIF`;
+                previewStagePlaceholder.style.display = 'flex';
+                return;
+            }
+
+            previewStagePlaceholder.style.display = 'none';
+            previewStageImage.classList.remove('is-visible');
+
+            requestAnimationFrame(() => {
+                previewStageImage.src = scene.gif_url;
+                previewStageImage.alt = scene.name;
+                requestAnimationFrame(() => {
+                    previewStageImage.classList.add('is-visible');
+                });
+            });
         }
 
         function resetCurrentSceneProgress() {
@@ -145,15 +254,16 @@
             const scene = previewState.sequence[previewState.index];
 
             if (!scene) {
-                previewScreen.innerHTML = '<div class="muted">Không có phân cảnh để xem.</div>';
+                previewStageImage.classList.remove('is-visible');
+                previewStageImage.removeAttribute('src');
+                previewStagePlaceholder.textContent = 'Không có phân cảnh để xem.';
+                previewStagePlaceholder.style.display = 'flex';
                 return;
             }
 
             clearPlayback();
-            previewScreen.innerHTML = scene.gif_url
-                ? `<img src="${scene.gif_url}" alt="${scene.name}">`
-                : `<div class="muted" style="text-align:center;">${scene.name}<br>Chưa có GIF</div>`;
-
+            primeNearbyScenes();
+            showSceneImage(scene);
             renderSequenceList();
 
             if (!autoplay) {
@@ -203,6 +313,8 @@
             previewState.content = contents.find((item) => Number(item.id) === Number(contentId)) || null;
             previewState.sequence = previewState.content ? [...previewState.content.scenes].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) : [];
             previewState.index = 0;
+            previewState.imageCache = new Map();
+            previewState.audioCache = new Map();
             stopPlayback();
             resetCurrentSceneProgress();
             renderSequenceList();
