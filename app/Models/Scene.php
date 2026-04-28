@@ -75,11 +75,20 @@ class Scene extends Model
 
     public function getGifUrlAttribute(): ?string
     {
-        return $this->gif_path ? route('scenes.media.gif', $this, false) : null;
+        return $this->gif_path
+            ? route('scenes.media.gif', $this, false).'?v='.$this->mediaVersion($this->gif_path)
+            : null;
     }
 
     public function getAudioUrlAttribute(): ?string
     {
-        return $this->audio_path ? route('scenes.media.audio', $this, false) : null;
+        return $this->audio_path
+            ? route('scenes.media.audio', $this, false).'?v='.$this->mediaVersion($this->audio_path)
+            : null;
+    }
+
+    private function mediaVersion(string $path): string
+    {
+        return md5($path.'|'.$this->updated_at?->timestamp.'|'.$this->id);
     }
 }
