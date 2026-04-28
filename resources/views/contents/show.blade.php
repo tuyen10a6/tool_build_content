@@ -77,12 +77,12 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Audio</label>
-                    <input class="form-input" type="file" name="audio" accept="audio/*">
-                    <div class="muted" style="margin-top: 8px;">Nếu có audio, Duration sẽ tự lấy bằng thời lượng audio.</div>
+                    <input class="form-input" id="scene-audio-input" type="file" name="audio" accept="audio/*">
+                    <div class="muted" id="scene-audio-help" style="margin-top: 8px;">Nếu có audio, Duration sẽ tự lấy bằng thời lượng audio.</div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Duration fallback (khi không có audio)</label>
-                    <input class="form-input" type="number" min="1" max="3600" name="duration_seconds" value="3">
+                    <label class="form-label" id="scene-duration-label">Duration fallback (Trong trường hợp không có audio)</label>
+                    <input class="form-input" id="scene-duration-input" type="number" min="1" max="3600" name="duration_seconds" value="3">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Phân cảnh chuyển tiếp sau cảnh này</label>
@@ -112,12 +112,12 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Audio chuyển tiếp</label>
-                            <input class="form-input" type="file" name="transition_audio" accept="audio/*">
-                            <div class="muted" style="margin-top: 8px;">Nếu có audio, thời lượng chuyển tiếp sẽ tự lấy đúng theo thời lượng audio.</div>
+                            <input class="form-input" id="transition-audio-input" type="file" name="transition_audio" accept="audio/*">
+                            <div class="muted" id="transition-audio-help" style="margin-top: 8px;">Nếu có audio, thời lượng chuyển tiếp sẽ tự lấy đúng theo thời lượng audio.</div>
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label">Duration khi không có audio</label>
-                            <input class="form-input" type="number" min="1" max="3600" name="transition_duration_seconds" value="{{ old('transition_duration_seconds', 3) }}">
+                            <label class="form-label" id="transition-duration-label">Duration khi không có audio</label>
+                            <input class="form-input" id="transition-duration-input" type="number" min="1" max="3600" name="transition_duration_seconds" value="{{ old('transition_duration_seconds', 3) }}">
                         </div>
                     </div>
                 </details>
@@ -185,4 +185,92 @@
             @endforelse
         </div>
     </div>
+@endsection
+
+@section('scripts')
+    <script>
+        function bindAudioDurationSync({
+            audioInputId,
+            durationInputId,
+            durationLabelId,
+            helpTextId,
+            emptyLabel,
+            activeLabel,
+            emptyHelp,
+            activeHelpPrefix,
+        }) {
+            const audioInput = document.getElementById(audioInputId);
+            const durationInput = document.getElementById(durationInputId);
+            const durationLabel = document.getElementById(durationLabelId);
+            const helpText = document.getElementById(helpTextId);
+            let fallbackValue = durationInput?.value || '3';
+
+            if (!audioInput || !durationInput || !durationLabel || !helpText) {
+                return;
+            }
+
+            const resetState = () => {
+                durationLabel.textContent = emptyLabel;
+                helpText.textContent = emptyHelp;
+                durationInput.readOnly = false;
+                durationInput.value = fallbackValue;
+            };
+
+            durationInput.addEventListener('input', () => {
+                if (!durationInput.readOnly && durationInput.value) {
+                    fallbackValue = durationInput.value;
+                }
+            });
+
+            audioInput.addEventListener('change', () => {
+                const [file] = audioInput.files || [];
+
+                if (!file) {
+                    resetState();
+                    return;
+                }
+
+                const previewAudio = document.createElement('audio');
+                const objectUrl = URL.createObjectURL(file);
+
+                previewAudio.preload = 'metadata';
+                previewAudio.src = objectUrl;
+                previewAudio.onloadedmetadata = () => {
+                    const duration = Math.max(1, Math.ceil(previewAudio.duration || 0));
+                    durationLabel.textContent = activeLabel;
+                    durationInput.value = duration;
+                    durationInput.readOnly = true;
+                    helpText.textContent = `${activeHelpPrefix} ${duration} giây.`;
+                    URL.revokeObjectURL(objectUrl);
+                };
+                previewAudio.onerror = () => {
+                    resetState();
+                    helpText.textContent = `${emptyHelp} Không đọc được thời lượng audio này.`;
+                    URL.revokeObjectURL(objectUrl);
+                };
+            });
+        }
+
+        bindAudioDurationSync({
+            audioInputId: 'scene-audio-input',
+            durationInputId: 'scene-duration-input',
+            durationLabelId: 'scene-duration-label',
+            helpTextId: 'scene-audio-help',
+            emptyLabel: 'Duration fallback (Trong trường hợp không có audio)',
+            activeLabel: 'Duration',
+            emptyHelp: 'Nếu có audio, Duration sẽ tự lấy bằng thời lượng audio.',
+            activeHelpPrefix: 'Đã lấy Duration theo audio:',
+        });
+
+        bindAudioDurationSync({
+            audioInputId: 'transition-audio-input',
+            durationInputId: 'transition-duration-input',
+            durationLabelId: 'transition-duration-label',
+            helpTextId: 'transition-audio-help',
+            emptyLabel: 'Duration khi không có audio',
+            activeLabel: 'Duration',
+            emptyHelp: 'Nếu có audio, thời lượng chuyển tiếp sẽ tự lấy đúng theo thời lượng audio.',
+            activeHelpPrefix: 'Đã lấy Duration chuyển tiếp theo audio:',
+        });
+    </script>
 @endsection
