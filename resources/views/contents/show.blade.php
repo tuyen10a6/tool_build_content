@@ -2,6 +2,24 @@
 
 @section('title', $content->name)
 
+@php
+    $shouldOpenSceneModal = $errors->hasAny([
+        'gif',
+        'audio',
+        'duration_seconds',
+        'next_transition_template_id',
+        'transition_name',
+        'transition_description',
+        'transition_gif',
+        'transition_audio',
+        'transition_duration_seconds',
+    ]);
+    $shouldOpenContentModal = $errors->hasAny([
+        'category_id',
+        'description',
+    ]);
+@endphp
+
 @section('content')
     <style>
         .preview-stage {
@@ -65,6 +83,58 @@
             white-space: nowrap;
         }
 
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.62);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1200;
+        }
+
+        .modal-overlay.is-open {
+            display: flex;
+        }
+
+        .modal-dialog {
+            width: min(820px, 100%);
+            max-height: calc(100vh - 40px);
+            overflow: auto;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            padding: 24px;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
         @media (max-width: 640px) {
             .scene-line {
                 display: block;
@@ -74,16 +144,22 @@
                 display: block;
                 margin-top: 4px;
             }
+
+            .modal-dialog {
+                padding: 18px;
+                max-height: calc(100vh - 24px);
+            }
         }
     </style>
     <div class="header">
         <a class="btn btn-secondary" href="{{ route('contents.index') }}">← Quay lại</a>
         <a class="btn btn-primary" href="{{ route('exports.contents', $content) }}">📦 Xuất nội dung</a>
     </div>
-    <div class="card">
-        <div class="detail-title">{{ $content->name }}</div>
-        <p class="detail-desc" style="margin-top: 8px;">{{ $content->description ?: 'Không có mô tả' }}</p>
-        <div class="detail-stats">
+    <div style="display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap;" class="card">
+        <div>
+             <div class="detail-title">{{ $content->name }}</div>
+            <p class="detail-desc" style="margin-top: 8px;">{{ $content->description ?: 'Không có mô tả' }}</p>
+            <div class="detail-stats">
             <div class="stat-item">
                 <span class="stat-value">{{ $content->category?->name }}</span>
                 <span class="muted">danh mục</span>
@@ -96,8 +172,15 @@
                 <span class="stat-value">{{ $content->scenes->count() }}</span>
                 <span class="muted">tổng thư mục xuất</span>
             </div>
+          </div>
         </div>
+        <div class="actions" style="justify-content: flex-end;">
+            <button class="btn btn-secondary" type="button" id="open-update-content-modal">✏️ Cập nhật nội dung</button>
+            <button class="btn btn-primary" type="button" id="open-create-scene-modal">+ Tạo phân cảnh</button>
+        </div>
+    
     </div>
+
     <div class="tabs" style="margin-top: 20px;">
             <a class="tab tab-link active" href="{{ route('contents.index') }}">Danh sách nội dung</a>
         <a class="tab tab-link" href="{{ route('transition-templates.index') }}">Mẫu chuyển tiếp</a>
@@ -127,10 +210,14 @@
             </div>
         </div>
     </div>
-    <div class="grid grid-2" style="margin-top: 20px;">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Cập nhật nội dung</h3>
+    <div class="modal-overlay" id="update-content-modal" aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="update-content-modal-title">
+            <div class="modal-header">
+                <div>
+                    <h3 class="card-title" id="update-content-modal-title">Cập nhật nội dung</h3>
+                    <div class="muted" style="margin-top: 6px;">Chỉnh sửa danh mục, tên và mô tả của nội dung này.</div>
+                </div>
+                <button class="modal-close" type="button" id="close-update-content-modal" aria-label="Đóng modal">×</button>
             </div>
             <form method="POST" action="{{ route('contents.update', $content) }}">
                 @csrf
@@ -144,14 +231,17 @@
                     </select>
                 </div>
                 <div class="form-group">
-                        <label class="form-label">Tên nội dung</label>
-                    <input class="form-input" type="text" name="name" value="{{ old('name', $content->name) }}">
+                    <label class="form-label">Tên nội dung</label>
+                    <input class="form-input" type="text" name="name" value="{{ $content->name }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Mô tả</label>
                     <textarea class="form-input" name="description">{{ old('description', $content->description) }}</textarea>
                 </div>
-                <button class="btn btn-primary" type="submit">Lưu nội dung</button>
+                <div class="actions" style="justify-content: flex-end; margin-top: 20px;">
+                    <button class="btn btn-secondary" type="button" id="cancel-update-content-modal">Đóng</button>
+                    <button class="btn btn-primary" type="submit">Lưu nội dung</button>
+                </div>
             </form>
             <form method="POST" action="{{ route('contents.destroy', $content) }}" style="margin-top: 12px;">
                 @csrf
@@ -159,15 +249,21 @@
                 <button class="btn btn-danger" type="submit" onclick="return confirm('Xóa nội dung này?')">Xóa nội dung</button>
             </form>
         </div>
-        <div style="margin-top: 0px " class="card">
-            <div class="card-header">
-                <h3 class="card-title">Tạo phân cảnh chính mới</h3>
+    </div>
+    <div class="modal-overlay" id="create-scene-modal" aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="create-scene-modal-title">
+            <div class="modal-header">
+                <div>
+                    <h3 class="card-title" id="create-scene-modal-title">Tạo phân cảnh chính mới</h3>
+                    <div class="muted" style="margin-top: 6px;">Nhập dữ liệu cho phân cảnh mới rồi bấm tạo để lưu vào nội dung này.</div>
+                </div>
+                <button class="modal-close" type="button" id="close-create-scene-modal" aria-label="Đóng modal">×</button>
             </div>
             <form method="POST" action="{{ route('scenes.store', $content) }}" enctype="multipart/form-data" id="create-scene-form">
                 @csrf
                 <div class="form-group">
                     <label class="form-label">Tên phân cảnh</label>
-                    <input class="form-input" type="text" name="name">
+                    <input class="form-input" type="text" name="name" value="{{ old('name') }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">GIF</label>
@@ -180,20 +276,20 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label" id="scene-duration-label">Thời lượng khi không có audio</label>
-                    <input class="form-input" id="scene-duration-input" type="number" min="1" max="3600" name="duration_seconds" value="3">
+                    <input class="form-input" id="scene-duration-input" type="number" min="1" max="3600" name="duration_seconds" value="{{ old('duration_seconds', 3) }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Phân cảnh chuyển tiếp sau cảnh này</label>
                     <select class="form-input" name="next_transition_template_id">
                         <option value="">Không dùng chuyển tiếp</option>
                         @foreach ($transitionTemplates as $template)
-                            <option value="{{ $template->id }}">{{ $template->name }} ({{ $template->duration_seconds }} giây)</option>
+                            <option value="{{ $template->id }}" @selected(old('next_transition_template_id') == $template->id)>{{ $template->name }} ({{ $template->duration_seconds }} giây)</option>
                         @endforeach
                     </select>
                     <div class="muted" style="margin-top: 8px;">Có thể chọn từ thư viện mẫu, hoặc tạo mới ngay bên dưới cho riêng cảnh này.</div>
                 </div>
                 <hr style="margin: 30px 0;">
-                <details class="card details-card" style="margin-bottom: 16px;">
+                <details class="card details-card" style="margin-bottom: 16px;" @if(old('transition_name') || old('transition_description') || old('transition_duration_seconds')) open @endif>
                     <summary>Tạo nhanh phân cảnh chuyển tiếp mới cho cảnh này</summary>
                     <div class="details-card-body">
                         <div class="form-group" style="margin-top: 16px;">
@@ -219,10 +315,13 @@
                         </div>
                     </div>
                 </details>
-                <button class="btn btn-primary" type="submit" id="create-scene-submit">
-                    <span id="create-scene-submit-text">+ Tạo phân cảnh</span>
-                    <span class="btn-loading-spinner" id="create-scene-submit-spinner" style="display: none;"></span>
-                </button>
+                <div class="actions" style="justify-content: flex-end; margin-top: 20px;">
+                    <button class="btn btn-secondary" type="button" id="cancel-create-scene-modal">Đóng</button>
+                    <button class="btn btn-primary" type="submit" id="create-scene-submit">
+                        <span id="create-scene-submit-text">+ Tạo phân cảnh</span>
+                        <span class="btn-loading-spinner" id="create-scene-submit-spinner" style="display: none;"></span>
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -615,6 +714,73 @@
             nextButtonId: 'content-preview-next',
             emptyMessage: 'Nội dung này chưa có chuỗi xem trước.',
         });
+
+        const updateContentModal = document.getElementById('update-content-modal');
+        const openUpdateContentModal = document.getElementById('open-update-content-modal');
+        const closeUpdateContentModal = document.getElementById('close-update-content-modal');
+        const cancelUpdateContentModal = document.getElementById('cancel-update-content-modal');
+        const shouldOpenContentModal = @json($shouldOpenContentModal);
+        const createSceneModal = document.getElementById('create-scene-modal');
+        const openCreateSceneModal = document.getElementById('open-create-scene-modal');
+        const closeCreateSceneModal = document.getElementById('close-create-scene-modal');
+        const cancelCreateSceneModal = document.getElementById('cancel-create-scene-modal');
+        const shouldOpenSceneModal = @json($shouldOpenSceneModal);
+
+        function syncModalBodyState() {
+            const hasOpenModal = document.querySelector('.modal-overlay.is-open');
+            document.body.classList.toggle('modal-open', Boolean(hasOpenModal));
+        }
+
+        function setModalState(modalElement, isOpen) {
+            if (!modalElement) {
+                return;
+            }
+
+            modalElement.classList.toggle('is-open', isOpen);
+            modalElement.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            syncModalBodyState();
+        }
+
+        openUpdateContentModal?.addEventListener('click', () => setModalState(updateContentModal, true));
+        closeUpdateContentModal?.addEventListener('click', () => setModalState(updateContentModal, false));
+        cancelUpdateContentModal?.addEventListener('click', () => setModalState(updateContentModal, false));
+        openCreateSceneModal?.addEventListener('click', () => setModalState(createSceneModal, true));
+        closeCreateSceneModal?.addEventListener('click', () => setModalState(createSceneModal, false));
+        cancelCreateSceneModal?.addEventListener('click', () => setModalState(createSceneModal, false));
+
+        updateContentModal?.addEventListener('click', (event) => {
+            if (event.target === updateContentModal) {
+                setModalState(updateContentModal, false);
+            }
+        });
+
+        createSceneModal?.addEventListener('click', (event) => {
+            if (event.target === createSceneModal) {
+                setModalState(createSceneModal, false);
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') {
+                return;
+            }
+
+            if (createSceneModal?.classList.contains('is-open')) {
+                setModalState(createSceneModal, false);
+            }
+
+            if (updateContentModal?.classList.contains('is-open')) {
+                setModalState(updateContentModal, false);
+            }
+        });
+
+        if (shouldOpenContentModal) {
+            setModalState(updateContentModal, true);
+        }
+
+        if (shouldOpenSceneModal) {
+            setModalState(createSceneModal, true);
+        }
 
         function bindAudioDurationSync({
             audioInputId,
