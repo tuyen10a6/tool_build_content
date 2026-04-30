@@ -11,7 +11,7 @@
             </div>
         </div>
         <div class="tabs" style="margin-top: 20px;">
-            <a class="tab tab-link" href="{{ route('contents.index') }}">Danh sách content</a>
+            <a class="tab tab-link" href="{{ route('contents.index') }}">Danh sách nội dung</a>
             <a class="tab tab-link active" href="{{ route('transition-templates.index') }}">Mẫu chuyển tiếp</a>
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
@@ -39,7 +39,7 @@
                     
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Duration khi không có audio</label>
+                        <label class="form-label">Thời lượng khi không có audio</label>
                         <input class="form-input" type="number" name="duration_seconds" min="1" max="3600" value="{{ old('duration_seconds', 3) }}">
                     </div>
                     <button class="btn btn-primary" type="submit">+ Tạo mẫu chuyển tiếp</button>
@@ -47,7 +47,7 @@
             </div>
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Preview mẫu chuyển tiếp</h2>
+                    <h2 class="card-title">Xem trước mẫu chuyển tiếp</h2>
                 </div>
                 <div class="preview-screen" id="template-preview-screen">
                     <div class="muted" style="text-align: center;">Chọn mẫu ở danh sách bên dưới để xem trước</div>

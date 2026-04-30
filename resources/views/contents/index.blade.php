@@ -1,23 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'Content')
+@section('title', 'Nội dung')
 
 @section('content')
     <section class="card">
         <div class="header" style="margin-bottom: 0;">
             <div>
-                <h1 class="page-title">Danh sách content</h1>
-                <p class="muted">Mỗi content thuộc một danh mục và chứa nhiều phân cảnh.</p>
+                <h1 class="page-title">Danh sách nội dung</h1>
+                <p class="muted">Mỗi nội dung thuộc một danh mục và chứa nhiều phân cảnh.</p>
             </div>
         </div>
         <div class="tabs" style="margin-top: 20px;">
-            <a class="tab tab-link active" href="{{ route('contents.index') }}">Danh sách content</a>
+            <a class="tab tab-link active" href="{{ route('contents.index') }}">Danh sách nội dung</a>
             <a class="tab tab-link" href="{{ route('transition-templates.index') }}">Mẫu chuyển tiếp</a>
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Tạo content mới</h3>
+                    <h3 class="card-title">Tạo nội dung mới</h3>
                 </div>
                 <form method="POST" action="{{ route('contents.store') }}">
                     @csrf
@@ -31,14 +31,14 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Tên content</label>
+                        <label class="form-label">Tên nội dung</label>
                         <input class="form-input" type="text" name="name" value="{{ old('name') }}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Mô tả</label>
                         <textarea class="form-input" name="description">{{ old('description') }}</textarea>
                     </div>
-                    <button class="btn btn-primary" type="submit">+ Tạo content</button>
+                    <button class="btn btn-primary" type="submit">+ Tạo nội dung</button>
                 </form>
             </div>
             <div>
@@ -59,7 +59,7 @@
                             </div>
                         </a>
                     @empty
-                        <div class="empty-state">Chưa có content nào.</div>
+                        <div class="empty-state">Chưa có nội dung nào.</div>
                     @endforelse
                 </div>
             </div>

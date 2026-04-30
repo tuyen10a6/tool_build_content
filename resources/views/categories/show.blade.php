@@ -12,7 +12,7 @@
         <div class="detail-stats">
             <div class="stat-item">
                 <span class="stat-value">{{ $category->contents->count() }}</span>
-                <span class="muted">content</span>
+                <span class="muted">nội dung</span>
             </div>
         </div>
     </div>
@@ -42,7 +42,7 @@
         </div>
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Danh sách content</h3>
+                <h3 class="card-title">Danh sách nội dung</h3>
             </div>
             <div class="stack">
                 @forelse ($category->contents as $content)
@@ -54,7 +54,7 @@
                         </div>
                     </a>
                 @empty
-                    <div class="empty-state">Danh mục này chưa có content.</div>
+                    <div class="empty-state">Danh mục này chưa có nội dung.</div>
                 @endforelse
             </div>
         </div>

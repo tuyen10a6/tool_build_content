@@ -39,9 +39,17 @@ class ContentController extends Controller
             'mainScenes.nextTransitionTemplate',
         ]);
 
+        $previewSequence = $content->scenes
+            ->sortBy([
+                ['sort_order', 'asc'],
+                ['position', 'asc'],
+            ])
+            ->values();
+
         return view('contents.show', [
             'content' => $content,
             'categories' => Category::orderBy('name')->get(),
+            'previewSequence' => $previewSequence,
             'transitionTemplates' => TransitionTemplate::query()->where('is_active', true)->orderBy('name')->get(),
         ]);
     }

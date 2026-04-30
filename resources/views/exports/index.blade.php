@@ -7,7 +7,7 @@
         <div class="header" style="margin-bottom: 0;">
             <div>
                 <h1 class="page-title">Xuất file</h1>
-                <p class="muted">Trang riêng chỉ để xuất scene hoặc content.</p>
+                <p class="muted">Trang riêng chỉ để xuất phân cảnh hoặc nội dung.</p>
             </div>
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
@@ -30,18 +30,18 @@
             </div>
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Xuất content</h3>
+                    <h3 class="card-title">Xuất nội dung</h3>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Chọn content</label>
+                    <label class="form-label">Chọn nội dung</label>
                     <select class="form-input" id="export-content-select">
-                        <option value="">Chọn content</option>
+                        <option value="">Chọn nội dung</option>
                         @foreach ($contents as $content)
                             <option value="{{ $content->id }}">{{ $content->name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <a class="btn btn-primary" id="export-content-link" href="#" style="pointer-events: none; opacity: .5;">📦 Xuất content</a>
+                <a class="btn btn-primary" id="export-content-link" href="#" style="pointer-events: none; opacity: .5;">📦 Xuất nội dung</a>
             </div>
         </div>
     </section>

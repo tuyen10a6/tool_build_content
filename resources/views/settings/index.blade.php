@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Setting')
+@section('title', 'Cài đặt')
 
 @section('content')
     <section class="card">
         <div class="header" style="margin-bottom: 0;">
             <div>
-                <h1 class="page-title">Setting</h1>
-                <p class="muted">Cài đặt hệ thống dùng chung cho toàn bộ project.</p>
+                <h1 class="page-title">Cài đặt</h1>
+                <p class="muted">Cài đặt hệ thống dùng chung cho toàn bộ dự án.</p>
             </div>
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
@@ -25,7 +25,7 @@
                             <option value="light" @selected(($appTheme ?? 'dark') === 'light')>Nền trắng</option>
                         </select>
                     </div>
-                    <button class="btn btn-primary" type="submit">Lưu setting</button>
+                    <button class="btn btn-primary" type="submit">Lưu cài đặt</button>
                 </form>
             </div>
             <div class="card">
@@ -35,7 +35,7 @@
                 <div class="stack">
                     <div class="list-item">
                         <div class="list-item-title">Toàn bộ hệ thống</div>
-                        <div class="list-item-desc">Danh mục, content, preview, export và các trang chi tiết sẽ cùng đổi theo theme.</div>
+                        <div class="list-item-desc">Danh mục, nội dung, xem trước, xuất file và các trang chi tiết sẽ cùng đổi theo giao diện.</div>
                     </div>
                     <div class="list-item">
                         <div class="list-item-title">Lưu trong database</div>

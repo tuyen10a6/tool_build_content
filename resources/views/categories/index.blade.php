@@ -7,7 +7,7 @@
         <div class="header" style="margin-bottom: 0;">
             <div>
                 <h1 class="page-title">Danh sách danh mục</h1>
-                <p class="muted">Quản lý danh mục riêng biệt, không trộn với content.</p>
+                <p class="muted">Quản lý danh mục riêng biệt, không trộn với nội dung.</p>
             </div>
             <a class="btn btn-secondary mobile-only" href="#create-category">+ Tạo nhanh</a>
         </div>
@@ -42,7 +42,7 @@
                             <div class="list-item-title">{{ $category->name }}</div>
                             <div class="list-item-desc">{{ $category->description ?: 'Không có mô tả' }}</div>
                             <div class="list-item-meta">
-                                <span class="tag">{{ $category->contents_count }} content</span>
+                                <span class="tag">{{ $category->contents_count }} nội dung</span>
                             </div>
                         </a>
                     @empty

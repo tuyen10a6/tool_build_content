@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Build Content Tool')</title>
+    <title>@yield('title', 'Công cụ xây dựng nội dung')</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
         :root { --primary: #d97706; --primary-light: #f59e0b; --bg-dark: #111315; --bg-card: #1b1f22; --bg-card-hover: #252b30; --border: #31393f; --text: #f6f3ef; --text-muted: #a8b0b7; --danger: #ef4444; --success: #16a34a; --warning: #f59e0b; --preview-bg: #000000; --preview-fg: #f6f3ef; --sidebar-bg: rgba(27, 31, 34, 0.94); --card-bg: rgba(27, 31, 34, 0.92); --input-bg: #101315; --tag-bg: #14181b; --accent-soft: rgba(245, 158, 11, 0.15); --accent-border: rgba(245, 158, 11, 0.35); --accent-text: #ffd08a; --shadow: 0 20px 40px rgba(0, 0, 0, 0.2); }
@@ -74,6 +74,8 @@
         .details-card summary::after { content: "▾"; color: var(--text-muted); transition: transform 0.2s ease; }
         .details-card[open] summary::after { transform: rotate(180deg); }
         .details-card-body { padding: 0 20px 20px; border-top: 1px solid var(--border); }
+        .btn[disabled] { opacity: 0.7; cursor: not-allowed; }
+        .btn-loading-spinner { width: 16px; height: 16px; border-radius: 999px; border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: rgba(255, 255, 255, 1); animation: spin 0.8s linear infinite; }
         .toast-stack { position: fixed; top: 20px; right: 20px; z-index: 2000; display: grid; gap: 12px; width: min(380px, calc(100vw - 32px)); }
         .toast { padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); box-shadow: var(--shadow); display: grid; gap: 6px; animation: toast-in 0.18s ease; }
         .toast-title { font-size: 14px; font-weight: 700; }
@@ -83,6 +85,7 @@
         .toast-error { border-color: rgba(239, 68, 68, 0.35); }
         .toast-error .toast-title { color: var(--danger); }
         .toast-hide { opacity: 0; transform: translateY(-8px); transition: opacity 0.2s ease, transform 0.2s ease; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } .sidebar { display: none; } .mobile-topbar { display: block; } .mobile-nav { display: grid; } .main-content { padding: 20px 20px 96px; } }
         @media (max-width: 640px) { .main-content { padding: 16px 16px 104px; } .card { padding: 16px; border-radius: 14px; } .page-title, .detail-title { font-size: 24px; line-height: 1.15; } .header { margin-bottom: 18px; } .btn { width: 100%; justify-content: center; } .header .btn { width: auto; } .mobile-nav-item { font-size: 10px; } .mobile-only { display: block; } .desktop-only { display: none; } }
@@ -92,7 +95,7 @@
     <div class="mobile-topbar">
         <div class="logo">
             <div class="logo-icon">🎬</div>
-            <span>Build Content</span>
+            <span>Công cụ nội dung</span>
         </div>
     </div>
     <div class="app">
@@ -100,15 +103,15 @@
             <div class="sidebar-header">
                 <div class="logo">
                     <div class="logo-icon">🎬</div>
-                    <span>Build Content</span>
+                    <span>Công cụ nội dung</span>
                 </div>
             </div>
             <a href="{{ route('categories.index') }}" class="nav-item {{ request()->routeIs('categories.*') ? 'active' : '' }}">🗂️ Danh mục</a>
-            <a href="{{ route('contents.index') }}" class="nav-item {{ request()->routeIs('contents.*', 'scenes.*') ? 'active' : '' }}">📄 Content</a>
+            <a href="{{ route('contents.index') }}" class="nav-item {{ request()->routeIs('contents.*', 'scenes.*') ? 'active' : '' }}">📄 Nội dung</a>
             <a href="{{ route('transition-templates.index') }}" class="nav-item {{ request()->routeIs('transition-templates.*') ? 'active' : '' }}">🔀 Phân cảnh chuyển tiếp</a>
             <a href="{{ route('preview.index') }}" class="nav-item {{ request()->routeIs('preview.*') ? 'active' : '' }}">▶️ Xem trước</a>
             <a href="{{ route('exports.index') }}" class="nav-item {{ request()->routeIs('exports.*') ? 'active' : '' }}">📦 Xuất file</a>
-            <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">⚙️ Setting</a>
+            <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">⚙️ Cài đặt</a>
         </aside>
         <main class="main-content">
             @yield('content')
@@ -121,7 +124,7 @@
         </a>
         <a href="{{ route('contents.index') }}" class="mobile-nav-item {{ request()->routeIs('contents.*', 'scenes.*') ? 'active' : '' }}">
             <span class="mobile-nav-icon">📄</span>
-            <span>Content</span>
+            <span>Nội dung</span>
         </a>
         <a href="{{ route('transition-templates.index') }}" class="mobile-nav-item {{ request()->routeIs('transition-templates.*') ? 'active' : '' }}">
             <span class="mobile-nav-icon">🔀</span>
@@ -137,7 +140,7 @@
         </a>
         <a href="{{ route('settings.index') }}" class="mobile-nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
             <span class="mobile-nav-icon">⚙️</span>
-            <span>Setting</span>
+            <span>Cài đặt</span>
         </a>
     </nav>
     <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>

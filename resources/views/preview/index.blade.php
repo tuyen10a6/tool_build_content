@@ -41,15 +41,15 @@
         <div class="header" style="margin-bottom: 0;">
             <div>
                 <h1 class="page-title">Xem trước</h1>
-                <p class="muted">Preview theo đúng chuỗi export: 1, 1-2, 2, 2-3...</p>
+                <p class="muted">Xem trước theo đúng chuỗi xuất: 1, 1-2, 2, 2-3...</p>
             </div>
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
             <div class="card">
                 <div class="form-group">
-                    <label class="form-label">Chọn content</label>
+                    <label class="form-label">Chọn nội dung</label>
                     <select class="form-input" id="preview-content-select">
-                        <option value="">Chọn content</option>
+                        <option value="">Chọn nội dung</option>
                         @foreach ($contents as $content)
                             <option value="{{ $content->id }}">{{ $content->name }}</option>
                         @endforeach
@@ -61,7 +61,7 @@
                 <div class="preview-screen" id="preview-screen">
                     <div class="preview-stage">
                         <img class="preview-stage-image" id="preview-stage-image" alt="">
-                        <div class="preview-stage-placeholder" id="preview-stage-placeholder">Chọn content để xem trước</div>
+                    <div class="preview-stage-placeholder" id="preview-stage-placeholder">Chọn nội dung để xem trước</div>
                     </div>
                 </div>
                 <div class="preview-controls">
@@ -224,7 +224,7 @@
 
         function renderSequenceList() {
             if (!previewState.sequence.length) {
-                previewSceneList.innerHTML = '<div class="empty-state">Content này chưa có chuỗi preview.</div>';
+                previewSceneList.innerHTML = '<div class="empty-state">Nội dung này chưa có chuỗi xem trước.</div>';
                 return;
             }
 
@@ -245,7 +245,7 @@
                     previewState.index = Number(button.dataset.index);
                     stopPlayback();
                     resetCurrentSceneProgress();
-                    renderCurrentScene(false);
+                    renderCurrentScene(true);
                 });
             });
         }
@@ -321,6 +321,16 @@
             renderCurrentScene(false);
         }
 
+        function playFromCurrentScene({ resetProgress = false } = {}) {
+            if (!previewState.sequence.length) return;
+            previewState.playing = true;
+            if (resetProgress) {
+                resetCurrentSceneProgress();
+            }
+            window.togglePreviewButtons(previewPlay, previewStop, true);
+            renderCurrentScene(true);
+        }
+
         previewContentSelect?.addEventListener('change', (event) => {
             setPreviewContent(event.target.value);
         });
@@ -328,24 +338,17 @@
         document.getElementById('preview-prev')?.addEventListener('click', () => {
             if (!previewState.sequence.length) return;
             previewState.index = Math.max(0, previewState.index - 1);
-            stopPlayback();
-            resetCurrentSceneProgress();
-            renderCurrentScene(false);
+            playFromCurrentScene({ resetProgress: true });
         });
 
         document.getElementById('preview-next')?.addEventListener('click', () => {
             if (!previewState.sequence.length) return;
             previewState.index = Math.min(previewState.sequence.length - 1, previewState.index + 1);
-            stopPlayback();
-            resetCurrentSceneProgress();
-            renderCurrentScene(false);
+            playFromCurrentScene({ resetProgress: true });
         });
 
         previewPlay?.addEventListener('click', () => {
-            if (!previewState.sequence.length) return;
-            previewState.playing = true;
-            window.togglePreviewButtons(previewPlay, previewStop, true);
-            renderCurrentScene(true);
+            playFromCurrentScene();
         });
 
         previewStop?.addEventListener('click', () => {

@@ -4,11 +4,11 @@
 
 @section('content')
     <div class="header">
-        <a class="btn btn-secondary" href="{{ route('contents.show', $scene->content) }}">← Quay lại content</a>
+        <a class="btn btn-secondary" href="{{ route('contents.show', $scene->content) }}">← Quay lại nội dung</a>
         <a class="btn btn-primary" href="{{ route('exports.scenes', $scene) }}">📦 Xuất phân cảnh</a>
     </div>
     <div class="tabs" style="margin-bottom: 20px;">
-        <a class="tab tab-link" href="{{ route('contents.index') }}">Danh sách content</a>
+        <a class="tab tab-link" href="{{ route('contents.index') }}">Danh sách nội dung</a>
         <a class="tab tab-link" href="{{ route('transition-templates.index') }}">Mẫu chuyển tiếp</a>
     </div>
     <div class="grid grid-2">
@@ -48,7 +48,7 @@
                         <div class="list-item-desc">{{ $scene->fromScene?->name }} → {{ $scene->toScene?->name }}</div>
                     </div>
                     <div class="list-item">
-                        <div class="list-item-title">Duration</div>
+                        <div class="list-item-title">Thời lượng</div>
                         <div class="list-item-desc">{{ $scene->duration_seconds }} giây</div>
                     </div>
                 </div>
@@ -64,7 +64,7 @@
                         <input class="form-input" type="text" name="name" value="{{ old('name', $scene->name) }}">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Thứ tự trong content</label>
+                        <label class="form-label">Thứ tự trong nội dung</label>
                         <input class="form-input" type="number" min="1" name="position" value="{{ old('position', $scene->position) }}">
                     </div>
                     <div class="form-group">
@@ -84,7 +84,7 @@
                         <input class="form-input" type="file" name="audio" accept="audio/*">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Duration fallback khi không có audio</label>
+                        <label class="form-label">Thời lượng khi không có audio</label>
                         <input class="form-input" type="number" min="1" max="3600" name="duration_seconds" value="{{ old('duration_seconds', $scene->duration_seconds) }}">
                     </div>
                     <div class="form-group">
@@ -92,7 +92,7 @@
                         <select class="form-input" name="next_transition_template_id">
                             <option value="">Không dùng chuyển tiếp</option>
                             @foreach ($transitionTemplates as $template)
-                                <option value="{{ $template->id }}" @selected(old('next_transition_template_id', $scene->next_transition_template_id) == $template->id)>{{ $template->name }} ({{ $template->duration_seconds }}s)</option>
+                                <option value="{{ $template->id }}" @selected(old('next_transition_template_id', $scene->next_transition_template_id) == $template->id)>{{ $template->name }} ({{ $template->duration_seconds }} giây)</option>
                             @endforeach
                         </select>
                     </div>
