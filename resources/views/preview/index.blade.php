@@ -84,6 +84,7 @@
             index: 0,
             timer: null,
             audio: null,
+            hasInteracted: false,
             playing: false,
             remainingMs: 0,
             startedAt: null,
@@ -102,6 +103,19 @@
 
         function currentScene() {
             return previewState.sequence[previewState.index] || null;
+        }
+
+        function isCurrentScenePaused(scene = currentScene()) {
+            if (!scene) {
+                return false;
+            }
+
+            if (scene.audio_url) {
+                return (previewState.pausedAudioTime || 0) > 0;
+            }
+
+            const totalMs = (scene.duration_seconds || 3) * 1000;
+            return previewState.remainingMs > 0 && previewState.remainingMs < totalMs;
         }
 
         function currentSceneRemainingSeconds(scene = currentScene()) {
@@ -234,7 +248,7 @@
                         <div class="scene-number">${scene.position_label || scene.position}</div>
                         <div>
                             <div class="scene-name">${scene.name}</div>
-                            <div class="scene-details">${scene.scene_type === 'transition' ? 'Chuyển tiếp' : 'Phân cảnh chính'} | ⏱️ ${scene.duration_seconds}s${index === previewState.index && !previewState.playing ? ` | ⏸ ${currentSceneRemainingSeconds(scene)}s còn lại` : ''}</div>
+                            <div class="scene-details">${scene.scene_type === 'transition' ? 'Chuyển tiếp' : 'Phân cảnh chính'} | ⏱️ ${scene.duration_seconds} giây${index === previewState.index && !previewState.playing && isCurrentScenePaused(scene) ? ` | ⏸ còn ${currentSceneRemainingSeconds(scene)} giây` : ''}</div>
                         </div>
                     </div>
                 </button>
@@ -243,9 +257,7 @@
             previewSceneList.querySelectorAll('[data-index]').forEach((button) => {
                 button.addEventListener('click', () => {
                     previewState.index = Number(button.dataset.index);
-                    stopPlayback();
-                    resetCurrentSceneProgress();
-                    renderCurrentScene(true);
+                    playFromCurrentScene({ resetProgress: true });
                 });
             });
         }
@@ -258,6 +270,16 @@
                 previewStageImage.removeAttribute('src');
                 previewStagePlaceholder.textContent = 'Không có phân cảnh để xem.';
                 previewStagePlaceholder.style.display = 'flex';
+                renderSequenceList();
+                return;
+            }
+
+            if (!previewState.hasInteracted) {
+                previewStageImage.classList.remove('is-visible');
+                previewStageImage.removeAttribute('src');
+                previewStagePlaceholder.textContent = 'Bấm Chạy để bắt đầu xem trước.';
+                previewStagePlaceholder.style.display = 'flex';
+                renderSequenceList();
                 return;
             }
 
@@ -315,6 +337,7 @@
             previewState.index = 0;
             previewState.imageCache = new Map();
             previewState.audioCache = new Map();
+            previewState.hasInteracted = false;
             stopPlayback();
             resetCurrentSceneProgress();
             renderSequenceList();
@@ -323,6 +346,7 @@
 
         function playFromCurrentScene({ resetProgress = false } = {}) {
             if (!previewState.sequence.length) return;
+            previewState.hasInteracted = true;
             previewState.playing = true;
             if (resetProgress) {
                 resetCurrentSceneProgress();

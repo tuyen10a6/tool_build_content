@@ -306,6 +306,7 @@
                 index: 0,
                 timer: null,
                 audio: null,
+                hasInteracted: false,
                 playing: false,
                 remainingMs: 0,
                 startedAt: null,
@@ -325,6 +326,19 @@
             window.togglePreviewButtons(playButton, stopButton, false);
 
             const currentScene = () => state.sequence[state.index] || null;
+
+            const isCurrentScenePaused = (scene = currentScene()) => {
+                if (!scene) {
+                    return false;
+                }
+
+                if (scene.audio_url) {
+                    return (state.pausedAudioTime || 0) > 0;
+                }
+
+                const totalMs = (scene.duration_seconds || 3) * 1000;
+                return state.remainingMs > 0 && state.remainingMs < totalMs;
+            };
 
             const currentSceneRemainingSeconds = (scene = currentScene()) => {
                 if (!scene) {
@@ -461,7 +475,7 @@
                             <div class="scene-line-block">
                                 <div class="scene-line">
                                     <span class="scene-line-name">${scene.name}</span>
-                                    <span class="scene-line-meta">${scene.duration_seconds} giây ; ${scene.gif_original_name || 'Chưa có GIF'} ; ${scene.audio_original_name || 'Không có audio'}${index === state.index && !state.playing ? ` ; còn ${currentSceneRemainingSeconds(scene)} giây` : ''}</span>
+                                    <span class="scene-line-meta">${scene.duration_seconds} giây ; ${scene.gif_original_name || 'Chưa có GIF'} ; ${scene.audio_original_name || 'Không có audio'}${index === state.index && !state.playing && isCurrentScenePaused(scene) ? ` ; còn ${currentSceneRemainingSeconds(scene)} giây` : ''}</span>
                                 </div>
                             </div>
                         </div>
@@ -471,9 +485,7 @@
                 listElement.querySelectorAll('[data-index]').forEach((button) => {
                     button.addEventListener('click', () => {
                         state.index = Number(button.dataset.index);
-                        stopPlayback();
-                        resetCurrentSceneProgress();
-                        renderCurrentScene(true);
+                        playFromCurrentScene({ resetProgress: true });
                     });
                 });
             };
@@ -505,6 +517,15 @@
                     imageElement.classList.remove('is-visible');
                     imageElement.removeAttribute('src');
                     placeholderElement.textContent = emptyMessage;
+                    placeholderElement.style.display = 'flex';
+                    renderSequenceList();
+                    return;
+                }
+
+                if (!state.hasInteracted) {
+                    imageElement.classList.remove('is-visible');
+                    imageElement.removeAttribute('src');
+                    placeholderElement.textContent = 'Bấm Xem trước để bắt đầu.';
                     placeholderElement.style.display = 'flex';
                     renderSequenceList();
                     return;
@@ -543,6 +564,7 @@
                     return;
                 }
 
+                state.hasInteracted = true;
                 state.playing = true;
                 if (resetProgress) {
                     resetCurrentSceneProgress();
