@@ -106,9 +106,11 @@
             current: null,
             audio: null,
             timer: null,
+            hasInteracted: false,
             playing: false,
             remainingMs: 0,
             startedAt: null,
+            pausedAudioTime: 0,
         };
 
         const templatePreviewScreen = document.getElementById('template-preview-screen');
@@ -121,6 +123,7 @@
         function resetTemplateProgress() {
             templateState.remainingMs = Math.max(1, ((templateState.current?.duration_seconds) || 3) * 1000);
             templateState.startedAt = null;
+            templateState.pausedAudioTime = 0;
 
             if (templateState.audio) {
                 templateState.audio.pause();
@@ -135,7 +138,7 @@
                 templateState.timer = null;
             }
 
-            if (templateState.startedAt && !templateState.current?.audio_url) {
+            if (templateState.startedAt && templateState.playing && !templateState.current?.audio_url) {
                 templateState.remainingMs = Math.max(0, templateState.remainingMs - (Date.now() - templateState.startedAt));
             }
 
@@ -143,6 +146,11 @@
 
             if (templateState.audio) {
                 templateState.audio.pause();
+                templateState.pausedAudioTime = templateState.audio.currentTime;
+                templateState.remainingMs = Math.max(
+                    0,
+                    ((templateState.current?.duration_seconds || 3) * 1000) - (templateState.pausedAudioTime * 1000),
+                );
             }
         }
 
@@ -155,11 +163,32 @@
                 return;
             }
 
+            if (!templateState.hasInteracted) {
+                templatePreviewScreen.innerHTML = '<div class="muted" style="text-align: center;">Bấm Xem trước để chạy mẫu này</div>';
+                templatePreviewMeta.textContent = `${template.name} | ${template.duration_seconds || 3} giây`;
+                return;
+            }
+
             templatePreviewScreen.innerHTML = template.gif_url
                 ? `<img src="${template.gif_url}" alt="${template.name}">`
                 : `<div class="muted" style="text-align:center;">${template.name}<br>Chưa có GIF</div>`;
 
-            templatePreviewMeta.textContent = `${template.name} | ${template.duration_seconds || 3} giây`;
+            if (templateState.playing) {
+                templatePreviewMeta.textContent = `${template.name} | Đang phát | ${template.duration_seconds || 3} giây`;
+                return;
+            }
+
+            const pausedSeconds = template.audio_url
+                ? Math.max(0, Math.ceil((template.duration_seconds || 3) - (templateState.pausedAudioTime || 0)))
+                : Math.max(0, Math.ceil((templateState.remainingMs || (template.duration_seconds || 3) * 1000) / 1000));
+
+            const isPaused = template.audio_url
+                ? (templateState.pausedAudioTime || 0) > 0
+                : templateState.remainingMs > 0 && templateState.remainingMs < ((template.duration_seconds || 3) * 1000);
+
+            templatePreviewMeta.textContent = isPaused
+                ? `${template.name} | Đang dừng | còn ${pausedSeconds} giây`
+                : `${template.name} | ${template.duration_seconds || 3} giây`;
         }
 
         function stopTemplatePreview(reset = false) {
@@ -179,6 +208,7 @@
                 return;
             }
 
+            templateState.hasInteracted = true;
             templateState.playing = true;
             clearTemplatePlayback();
             window.togglePreviewButtons(templatePreviewPlay, templatePreviewStop, true);
@@ -191,6 +221,7 @@
                     templateState.audio.onended = () => stopTemplatePreview(true);
                 }
 
+                templateState.audio.currentTime = templateState.pausedAudioTime || 0;
                 templateState.audio.play().catch(() => stopTemplatePreview());
                 return;
             }
@@ -203,7 +234,8 @@
             button.addEventListener('click', () => {
                 templateState.current = transitionTemplates[button.dataset.templateId] || null;
                 resetTemplateProgress();
-                stopTemplatePreview();
+                templateState.hasInteracted = true;
+                playTemplatePreview();
             });
         });
 
