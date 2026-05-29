@@ -161,16 +161,17 @@
             <p class="detail-desc" style="margin-top: 8px;">{{ $content->description ?: 'Không có mô tả' }}</p>
             <div class="detail-stats">
             <div class="stat-item">
+                <span class="muted">Danh mục:</span>
                 <span class="stat-value">{{ $content->category?->name }}</span>
-                <span class="muted">danh mục</span>
+        
             </div>
             <div class="stat-item">
+                <span class="muted">Phân cảnh chính:</span>
                 <span class="stat-value">{{ $content->mainScenes->count() }}</span>
-                <span class="muted">phân cảnh chính</span>
             </div>
             <div class="stat-item">
+                <span class="muted">Tổng thư mục xuất:</span>
                 <span class="stat-value">{{ $content->scenes->count() }}</span>
-                <span class="muted">tổng thư mục xuất</span>
             </div>
           </div>
         </div>
@@ -187,10 +188,7 @@
     </div>
     <div class="card" style="margin-top: 20px;">
         <div class="card-header">
-            <div>
-                <h3 class="card-title">Xem trước ngay trong trang này</h3>
-                <div class="muted">Bấm Xem trước để chạy chuỗi cảnh, hoặc dùng Trước / Sau để chuyển cảnh và tự phát luôn.</div>
-            </div>
+            
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
             <div id="content-preview-scenes-list" class="stack"></div>
@@ -341,6 +339,8 @@
                                 <span>🖼️ {{ $scene->gif_original_name ?: 'Chưa có GIF' }}</span>
                                 <span>🎵 {{ $scene->audio_original_name ?: 'Không có audio' }}</span>
                                 <span>🔀 {{ $scene->nextTransitionTemplate?->name ?: 'Không có chuyển tiếp sau cảnh này' }}</span>
+                                <span>👤 {{ $scene->created_by_name }}</span>
+                                <span>🗓️ {{ $scene->created_at?->format('d/m/Y H:i') }}</span>
                             </div>
                         </div>
                     </div>

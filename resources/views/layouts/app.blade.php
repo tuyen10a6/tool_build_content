@@ -14,13 +14,16 @@
         .sidebar { width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; position: sticky; top: 0; height: 100vh; backdrop-filter: blur(10px); }
         .mobile-topbar { display: none; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--sidebar-bg); position: sticky; top: 0; z-index: 20; backdrop-filter: blur(10px); }
         .mobile-topbar .logo { font-size: 16px; }
-        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; display: grid; gap: 14px; }
         .logo { font-size: 18px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 10px; }
         .logo-icon { width: 34px; height: 34px; background: linear-gradient(135deg, var(--primary), #fb923c); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+        .user-panel { padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--accent-soft); display: grid; gap: 6px; }
+        .user-panel-name { font-size: 15px; font-weight: 700; }
+        .user-panel-meta { color: var(--text-muted); font-size: 13px; }
         .nav-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; color: var(--text-muted); border-left: 3px solid transparent; }
         .nav-item.active, .nav-item:hover { background: var(--bg-card-hover); color: var(--text); border-left-color: var(--primary); }
         .main-content { flex: 1; padding: 28px; }
-        .mobile-nav { display: none; position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--border); background: var(--sidebar-bg); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+        .mobile-nav { display: none; position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; padding: 8px; border: 1px solid var(--border); background: var(--sidebar-bg); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
         .mobile-nav-item { min-width: 0; padding: 10px 6px; border-radius: 12px; display: grid; justify-items: center; gap: 4px; color: var(--text-muted); font-size: 11px; font-weight: 600; text-align: center; }
         .mobile-nav-item.active { background: var(--bg-card-hover); color: var(--text); }
         .mobile-nav-icon { font-size: 16px; line-height: 1; }
@@ -85,6 +88,12 @@
         .toast-error { border-color: rgba(239, 68, 68, 0.35); }
         .toast-error .toast-title { color: var(--danger); }
         .toast-hide { opacity: 0; transform: translateY(-8px); transition: opacity 0.2s ease, transform 0.2s ease; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+        .data-table th { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .status-pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid var(--border); }
+        .status-pill-active { background: rgba(22, 163, 74, 0.14); color: #86efac; border-color: rgba(22, 163, 74, 0.26); }
+        .status-pill-locked { background: rgba(239, 68, 68, 0.14); color: #fca5a5; border-color: rgba(239, 68, 68, 0.26); }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } .sidebar { display: none; } .mobile-topbar { display: block; } .mobile-nav { display: grid; } .main-content { padding: 20px 20px 96px; } }
@@ -105,13 +114,25 @@
                     <div class="logo-icon">🎬</div>
                     <span>Công cụ nội dung</span>
                 </div>
+                <div class="user-panel">
+                    <div class="user-panel-name">{{ auth()->user()->display_name }}</div>
+                    <div class="user-panel-meta">{{ auth()->user()->username }} · {{ auth()->user()->role === 'admin' ? 'Admin' : 'User' }}</div>
+                </div>
             </div>
             <a href="{{ route('categories.index') }}" class="nav-item {{ request()->routeIs('categories.*') ? 'active' : '' }}">🗂️ Danh mục</a>
             <a href="{{ route('contents.index') }}" class="nav-item {{ request()->routeIs('contents.*', 'scenes.*') ? 'active' : '' }}">📄 Nội dung</a>
             <a href="{{ route('transition-templates.index') }}" class="nav-item {{ request()->routeIs('transition-templates.*') ? 'active' : '' }}">🔀 Phân cảnh chuyển tiếp</a>
             <a href="{{ route('preview.index') }}" class="nav-item {{ request()->routeIs('preview.*') ? 'active' : '' }}">▶️ Xem trước</a>
             <a href="{{ route('exports.index') }}" class="nav-item {{ request()->routeIs('exports.*') ? 'active' : '' }}">📦 Xuất file</a>
+            @if (auth()->user()->isAdmin())
+                <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">📊 Báo cáo</a>
+                <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">👤 Tài khoản</a>
+            @endif
             <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">⚙️ Cài đặt</a>
+            <form method="POST" action="{{ route('logout') }}" style="padding: 20px;">
+                @csrf
+                <button class="btn btn-secondary" type="submit" style="width: 100%;">Đăng xuất</button>
+            </form>
         </aside>
         <main class="main-content">
             @yield('content')
@@ -138,6 +159,16 @@
             <span class="mobile-nav-icon">📦</span>
             <span>Xuất file</span>
         </a>
+        @if (auth()->user()->isAdmin())
+            <a href="{{ route('reports.index') }}" class="mobile-nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                <span class="mobile-nav-icon">📊</span>
+                <span>Báo cáo</span>
+            </a>
+            <a href="{{ route('users.index') }}" class="mobile-nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                <span class="mobile-nav-icon">👤</span>
+                <span>Tài khoản</span>
+            </a>
+        @endif
         <a href="{{ route('settings.index') }}" class="mobile-nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
             <span class="mobile-nav-icon">⚙️</span>
             <span>Cài đặt</span>

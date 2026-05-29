@@ -17,6 +17,7 @@
         </div>
     </div>
     <div class="grid grid-2" style="margin-top: 20px;">
+        @if (auth()->user()->isAdmin())
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Cập nhật danh mục</h3>
@@ -40,6 +41,7 @@
                 <button class="btn btn-danger" type="submit" onclick="return confirm('Xóa danh mục này?')">Xóa danh mục</button>
             </form>
         </div>
+        @endif
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Danh sách nội dung</h3>

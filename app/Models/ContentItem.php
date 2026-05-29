@@ -15,11 +15,25 @@ class ContentItem extends Model
         'category_id',
         'name',
         'description',
+        'created_by',
+        'created_by_name',
     ];
+
+    public function scopeVisibleTo($query, User $user)
+    {
+        return $user->isAdmin()
+            ? $query
+            : $query->where('created_by', $user->id);
+    }
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function scenes(): HasMany

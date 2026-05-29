@@ -3,22 +3,55 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContentItem;
+use App\Models\ExportLog;
 use App\Models\Scene;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use ZipArchive;
 
 class ExportController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $selectedUserIds = $this->user()->isAdmin()
+            ? collect($request->input('user_ids', []))->filter()->map(fn ($value) => (int) $value)->values()->all()
+            : [$this->user()->id];
+        $fromDate = $request->string('from_date')->toString();
+        $toDate = $request->string('to_date')->toString();
+        $exportType = $request->string('export_type')->toString();
+
+        $contents = ContentItem::query()
+            ->visibleTo($this->user())
+            ->with(['scenes' => fn ($query) => $query->orderBy('sort_order')->orderBy('position')])
+            ->when($selectedUserIds !== [], fn ($query) => $query->whereIn('created_by', $selectedUserIds))
+            ->get();
+
+        $logs = ExportLog::query()
+            ->visibleTo($this->user())
+            ->when($selectedUserIds !== [], fn ($query) => $query->whereIn('user_id', $selectedUserIds))
+            ->when($fromDate, fn ($query) => $query->whereDate('exported_at', '>=', $fromDate))
+            ->when($toDate, fn ($query) => $query->whereDate('exported_at', '<=', $toDate))
+            ->when($exportType, fn ($query) => $query->where('export_type', $exportType))
+            ->orderByDesc('exported_at')
+            ->get();
+
         return view('exports.index', [
-            'contents' => ContentItem::with(['scenes' => fn ($query) => $query->orderBy('sort_order')->orderBy('position')])->get(),
+            'contents' => $contents,
+            'logs' => $logs,
+            'users' => $this->user()->isAdmin() ? User::query()->orderBy('full_name')->get() : collect([$this->user()]),
+            'selectedUserIds' => $selectedUserIds,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'exportType' => $exportType,
         ]);
     }
 
     public function scene(Scene $scene)
     {
+        $this->authorizeOwnership($scene);
+
         $scene->load('content.category');
 
         $zipPath = $this->makeZipPath('scene-'.$scene->id);
@@ -29,12 +62,15 @@ class ExportController extends Controller
         $zip->addFromString($folder.'/scene.md', $this->sceneMarkdown($scene));
         $this->addMedia($zip, $folder, $scene);
         $zip->close();
+        $this->logExport('SCENE_ZIP', $folder.'.zip', 'scene:'.$scene->id.'|content:'.$scene->content_item_id);
 
         return response()->download($zipPath, $folder.'.zip')->deleteFileAfterSend(true);
     }
 
     public function content(ContentItem $content)
     {
+        $this->authorizeOwnership($content);
+
         $content->load(['category', 'scenes']);
 
         $zipPath = $this->makeZipPath('content-'.$content->id);
@@ -56,8 +92,21 @@ class ExportController extends Controller
         }
 
         $zip->close();
+        $this->logExport('CONTENT_ZIP', $folder.'.zip', 'content:'.$content->id);
 
         return response()->download($zipPath, $folder.'.zip')->deleteFileAfterSend(true);
+    }
+
+    private function logExport(string $type, string $fileName, string $scope): void
+    {
+        ExportLog::create([
+            'user_id' => $this->user()->id,
+            'username' => $this->user()->username,
+            'export_type' => $type,
+            'file_name' => $fileName,
+            'data_scope' => $scope,
+            'exported_at' => now(),
+        ]);
     }
 
     private function addMedia(ZipArchive $zip, string $folder, Scene $scene): void

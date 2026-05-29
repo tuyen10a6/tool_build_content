@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+
 class Scene extends Model
 {
     use HasFactory;
@@ -26,6 +27,8 @@ class Scene extends Model
         'to_scene_id',
         'transition_template_id',
         'next_transition_template_id',
+        'created_by',
+        'created_by_name',
     ];
 
     protected $appends = [
@@ -36,6 +39,18 @@ class Scene extends Model
     public function content(): BelongsTo
     {
         return $this->belongsTo(ContentItem::class, 'content_item_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function scopeVisibleTo($query, User $user)
+    {
+        return $user->isAdmin()
+            ? $query
+            : $query->where('created_by', $user->id);
     }
 
     public function transitionTemplate(): BelongsTo

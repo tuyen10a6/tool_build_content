@@ -9,9 +9,12 @@
                 <h1 class="page-title">Danh sách danh mục</h1>
                 <p class="muted">Quản lý danh mục riêng biệt, không trộn với nội dung.</p>
             </div>
-            <a class="btn btn-secondary mobile-only" href="#create-category">+ Tạo nhanh</a>
+            @if (auth()->user()->isAdmin())
+                <a class="btn btn-secondary mobile-only" href="#create-category">+ Tạo nhanh</a>
+            @endif
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
+            @if (auth()->user()->isAdmin())
             <div class="desktop-only">
                 <div class="card" id="create-category">
                     <div class="card-header">
@@ -31,6 +34,7 @@
                     </form>
                 </div>
             </div>
+            @endif
             <div>
                 <div class="card-header" style="padding: 0; margin-bottom: 12px;">
                     <h2 class="card-title">Danh mục hiện có</h2>
@@ -51,6 +55,7 @@
                 </div>
             </div>
         </div>
+        @if (auth()->user()->isAdmin())
         <details class="card details-card mobile-only" id="create-category" style="margin-top: 16px;" {{ $errors->hasAny(['name', 'description']) ? 'open' : '' }}>
             <summary>Tạo danh mục mới</summary>
             <div class="details-card-body">
@@ -68,5 +73,6 @@
                 </form>
             </div>
         </details>
+        @endif
     </section>
 @endsection

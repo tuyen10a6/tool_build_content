@@ -11,7 +11,11 @@ class CategoryController extends Controller
     public function index()
     {
         return view('categories.index', [
-            'categories' => Category::withCount('contents')->get(),
+            'categories' => Category::query()
+                ->withCount([
+                    'contents' => fn ($query) => $query->visibleTo($this->user()),
+                ])
+                ->get(),
         ]);
     }
 
@@ -30,7 +34,7 @@ class CategoryController extends Controller
     public function show(Category $category)
     {
         $category->load([
-            'contents' => fn ($query) => $query->withCount('scenes'),
+            'contents' => fn ($query) => $query->visibleTo($this->user())->withCount('scenes'),
         ]);
 
         return view('categories.show', [

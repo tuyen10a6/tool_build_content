@@ -15,6 +15,8 @@ class SceneController extends Controller
 {
     public function gif(Scene $scene): StreamedResponse
     {
+        $this->authorizeOwnership($scene);
+
         abort_unless($scene->gif_path && Storage::disk('public')->exists($scene->gif_path), 404);
 
         return Storage::disk('public')->response(
@@ -29,6 +31,8 @@ class SceneController extends Controller
 
     public function audio(Scene $scene): StreamedResponse
     {
+        $this->authorizeOwnership($scene);
+
         abort_unless($scene->audio_path && Storage::disk('public')->exists($scene->audio_path), 404);
 
         return Storage::disk('public')->response(
@@ -43,6 +47,8 @@ class SceneController extends Controller
 
     public function show(Scene $scene)
     {
+        $this->authorizeOwnership($scene);
+
         $scene->load(['content.category', 'nextTransitionTemplate', 'transitionTemplate', 'fromScene', 'toScene']);
 
         $transitionTemplates = TransitionTemplate::query()
@@ -64,6 +70,8 @@ class SceneController extends Controller
 
     public function store(Request $request, ContentItem $content): RedirectResponse
     {
+        $this->authorizeOwnership($content);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'gif' => ['required', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
@@ -93,6 +101,8 @@ class SceneController extends Controller
             'position' => ((int) $content->mainScenes()->max('position')) + 1,
             'sort_order' => ((int) $content->scenes()->max('sort_order')) + 1,
             'next_transition_template_id' => $transitionTemplateId,
+            'created_by' => $this->user()->id,
+            'created_by_name' => $this->user()->display_name,
         ]);
 
         $this->persistMainSceneMedia($request, $scene, $validated);
@@ -104,6 +114,8 @@ class SceneController extends Controller
 
     public function update(Request $request, Scene $scene): RedirectResponse
     {
+        $this->authorizeOwnership($scene);
+
         if ($scene->isTransition()) {
             return back()->with('status', 'Phân cảnh chuyển tiếp được quản lý từ mẫu chuyển tiếp và thứ tự phân cảnh chính.');
         }
@@ -150,6 +162,8 @@ class SceneController extends Controller
 
     public function destroy(Scene $scene): RedirectResponse
     {
+        $this->authorizeOwnership($scene);
+
         $content = $scene->content;
 
         if ($scene->isMain()) {
@@ -173,6 +187,8 @@ class SceneController extends Controller
 
     public function duplicate(Scene $scene): RedirectResponse
     {
+        $this->authorizeOwnership($scene);
+
         if ($scene->isTransition()) {
             return back()->with('status', 'Không nhân bản trực tiếp phân cảnh chuyển tiếp. Hãy nhân bản phân cảnh chính hoặc dùng mẫu chuyển tiếp.');
         }
@@ -187,6 +203,8 @@ class SceneController extends Controller
         $copy->name = $scene->name.' (Copy)';
         $copy->position = ((int) $scene->content->mainScenes()->max('position')) + 1;
         $copy->sort_order = ((int) $scene->content->scenes()->max('sort_order')) + 1;
+        $copy->created_by = $this->user()->id;
+        $copy->created_by_name = $this->user()->display_name;
 
         if ($scene->gif_path) {
             $copy->gif_path = $this->duplicateFile($scene->gif_path, 'scenes/gifs');
@@ -360,6 +378,8 @@ class SceneController extends Controller
                 'from_scene_id' => $scene->id,
                 'to_scene_id' => $nextScene->id,
                 'transition_template_id' => $template->id,
+                'created_by' => $scene->created_by,
+                'created_by_name' => $scene->created_by_name,
             ]);
         }
     }

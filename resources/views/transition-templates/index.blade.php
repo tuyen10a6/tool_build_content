@@ -15,6 +15,7 @@
             <a class="tab tab-link active" href="{{ route('transition-templates.index') }}">Mẫu chuyển tiếp</a>
         </div>
         <div class="grid grid-2" style="margin-top: 20px;">
+            @if (auth()->user()->isAdmin())
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">Tạo mẫu chuyển tiếp</h2>
@@ -45,6 +46,7 @@
                     <button class="btn btn-primary" type="submit">+ Tạo mẫu chuyển tiếp</button>
                 </form>
             </div>
+            @endif
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">Xem trước mẫu chuyển tiếp</h2>
@@ -85,11 +87,13 @@
                             class="btn btn-secondary template-preview-select"
                             type="button"
                             data-template-id="{{ $template->id }}">Xem trước</button>
-                        <form method="POST" action="{{ route('transition-templates.destroy', $template) }}">
-                            @csrf
-                            @method('DELETE')
-                            <button class="btn btn-danger" type="submit" onclick="return confirm('Xóa mẫu chuyển tiếp này?')">Xóa mẫu</button>
-                        </form>
+                        @if (auth()->user()->isAdmin())
+                            <form method="POST" action="{{ route('transition-templates.destroy', $template) }}">
+                                @csrf
+                                @method('DELETE')
+                                <button class="btn btn-danger" type="submit" onclick="return confirm('Xóa mẫu chuyển tiếp này?')">Xóa mẫu</button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @empty
