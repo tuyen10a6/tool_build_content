@@ -132,6 +132,7 @@ class ExportController extends Controller
             '- Duration: '.$scene->duration_seconds.' giây',
             '- GIF: '.($scene->gif_original_name ?: 'Không có'),
             '- Audio: '.($scene->audio_original_name ?: 'Không có'),
+            '- Nội dung: '.($scene->scene_text ?: 'Không có'),
         ]);
     }
 

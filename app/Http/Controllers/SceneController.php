@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\VideoToGifException;
 use App\Models\ContentItem;
 use App\Models\Scene;
 use App\Models\TransitionTemplate;
+use App\Services\VideoToGifService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -72,18 +74,25 @@ class SceneController extends Controller
     {
         $this->authorizeOwnership($content);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'gif' => ['required', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
-            'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
-            'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
-            'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
-            'transition_name' => ['nullable', 'string', 'max:255'],
-            'transition_description' => ['nullable', 'string'],
-            'transition_gif' => ['nullable', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
-            'transition_audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
-            'transition_duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
-        ]);
+        $validated = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'scene_text' => ['nullable', 'string'],
+                'video' => ['required', 'file', 'mimetypes:video/mp4', 'mimes:mp4'],
+                'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+                'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
+                'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
+                'transition_name' => ['nullable', 'string', 'max:255'],
+                'transition_description' => ['nullable', 'string'],
+                'transition_gif' => ['nullable', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
+                'transition_audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
+                'transition_duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
+            ],
+            [
+                'video.mimes' => 'Chỉ hỗ trợ file MP4.',
+                'video.mimetypes' => 'Chỉ hỗ trợ file MP4.',
+            ]
+        );
 
         $transitionTemplateId = $validated['next_transition_template_id'] ?? null;
 
@@ -95,15 +104,32 @@ class SceneController extends Controller
             $transitionTemplateId = $this->createInlineTransitionTemplate($request, $validated)->id;
         }
 
+        try {
+            $convertedGif = app(VideoToGifService::class)->convertToStoredGif($request->file('video'));
+        } catch (VideoToGifException $exception) {
+            return back()
+                ->withErrors(['video' => $exception->getMessage()])
+                ->withInput($request->except('video', 'audio', 'transition_gif', 'transition_audio'));
+        }
+
         $scene = new Scene([
             'scene_type' => 'main',
             'name' => $validated['name'],
+            'scene_text' => $validated['scene_text'] ?? null,
             'position' => ((int) $content->mainScenes()->max('position')) + 1,
             'sort_order' => ((int) $content->scenes()->max('sort_order')) + 1,
             'next_transition_template_id' => $transitionTemplateId,
             'created_by' => $this->user()->id,
             'created_by_name' => $this->user()->display_name,
+            'gif_path' => $convertedGif['gif_path'],
+            'gif_original_name' => $convertedGif['gif_original_name'],
         ]);
+
+        if (! $request->hasFile('audio')) {
+            $scene->duration_seconds = $this->extractMediaDuration(
+                $request->file('video')->getRealPath()
+            ) ?? 3;
+        }
 
         $this->persistMainSceneMedia($request, $scene, $validated);
         $content->scenes()->save($scene);
@@ -122,12 +148,17 @@ class SceneController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'gif' => ['nullable', 'file', 'mimes:gif,jpg,jpeg,png,webp'],
+            'scene_text' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'video' => ['nullable', 'file', 'mimetypes:video/mp4', 'mimes:mp4'],
             'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
             'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
             'position' => ['required', 'integer', 'min:1'],
             'remove_audio' => ['nullable', 'boolean'],
             'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
+        ], [
+            'video.mimes' => 'Chỉ hỗ trợ file MP4.',
+            'video.mimetypes' => 'Chỉ hỗ trợ file MP4.',
         ]);
 
         $content = $scene->content;
@@ -136,9 +167,27 @@ class SceneController extends Controller
 
         $scene->fill([
             'name' => $validated['name'],
+            'scene_text' => $validated['scene_text'] ?? null,
             'position' => $newPosition,
             'next_transition_template_id' => $validated['next_transition_template_id'] ?? null,
         ]);
+
+        if ($request->hasFile('video')) {
+            try {
+                $convertedGif = app(VideoToGifService::class)->convertToStoredGif($request->file('video'));
+            } catch (VideoToGifException $exception) {
+                return back()
+                    ->withErrors(['video' => $exception->getMessage()])
+                    ->withInput($request->except('video', 'audio'));
+            }
+
+            if ($scene->gif_path) {
+                Storage::disk('public')->delete($scene->gif_path);
+            }
+
+            $scene->gif_path = $convertedGif['gif_path'];
+            $scene->gif_original_name = $convertedGif['gif_original_name'];
+        }
 
         $this->persistMainSceneMedia($request, $scene, $validated, true);
 
@@ -214,6 +263,11 @@ class SceneController extends Controller
             $copy->audio_path = $this->duplicateFile($scene->audio_path, 'scenes/audios');
         }
 
+        if ($scene->image_path) {
+            $copy->image_path = $this->duplicateFile($scene->image_path, 'scenes/images');
+            $copy->image_original_name = $scene->image_original_name;
+        }
+
         $copy->save();
         $this->rebuildTransitions($scene->content->fresh());
 
@@ -233,6 +287,19 @@ class SceneController extends Controller
                 'public'
             );
             $scene->gif_original_name = $request->file('gif')->getClientOriginalName();
+        }
+
+        if ($request->hasFile('image')) {
+            if ($replace && $scene->image_path) {
+                Storage::disk('public')->delete($scene->image_path);
+            }
+
+            $scene->image_path = $request->file('image')->storeAs(
+                'scenes/images',
+                Str::uuid().'.'.$request->file('image')->getClientOriginalExtension(),
+                'public'
+            );
+            $scene->image_original_name = $request->file('image')->getClientOriginalName();
         }
 
         if ($request->hasFile('audio')) {
@@ -307,6 +374,10 @@ class SceneController extends Controller
 
         if ($scene->audio_path) {
             Storage::disk('public')->delete($scene->audio_path);
+        }
+
+        if ($scene->image_path) {
+            Storage::disk('public')->delete($scene->image_path);
         }
     }
 
@@ -384,7 +455,7 @@ class SceneController extends Controller
         }
     }
 
-    private function extractAudioDuration(string $path): ?int
+    private function extractMediaDuration(string $path): ?int
     {
         $command = sprintf(
             'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s',
@@ -395,6 +466,11 @@ class SceneController extends Controller
         $duration = is_string($output) ? (float) trim($output) : 0;
 
         return $duration > 0 ? (int) ceil($duration) : null;
+    }
+
+    private function extractAudioDuration(string $path): ?int
+    {
+        return $this->extractMediaDuration($path);
     }
 
     private function safeFilename(string $filename): string

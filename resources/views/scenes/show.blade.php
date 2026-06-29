@@ -64,16 +64,25 @@
                         <input class="form-input" type="text" name="name" value="{{ old('name', $scene->name) }}">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Nội dung phân cảnh</label>
+                        <textarea class="form-input" name="scene_text" rows="6">{{ old('scene_text', $scene->scene_text) }}</textarea>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Thứ tự trong nội dung</label>
                         <input class="form-input" type="number" min="1" name="position" value="{{ old('position', $scene->position) }}">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">GIF hiện tại</label>
-                        <div class="tag tag-primary">{{ $scene->gif_original_name ?: 'Chưa có' }}</div>
+                        <label class="form-label">Ảnh hiện tại</label>
+                        <div class="tag">{{ $scene->image_original_name ?: 'Không có' }}</div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">GIF mới</label>
-                        <input class="form-input" type="file" name="gif" accept=".gif,.jpg,.jpeg,.png,.webp">
+                        <label class="form-label">Ảnh mới</label>
+                        <input class="form-input" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Video MP4 mới</label>
+                        <input class="form-input" type="file" name="video" accept=".mp4,video/mp4">
+                        <div class="muted" style="margin-top: 8px;">Nếu upload video mới, hệ thống sẽ convert lại sang GIF và thay thế GIF đang hiển thị ở khung xem trước.</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Audio hiện tại</label>

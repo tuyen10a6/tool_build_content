@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'video_to_gif' => [
+        'url' => env('VIDEO_TO_GIF_API_URL'),
+        'key' => env('VIDEO_TO_GIF_API_KEY'),
+        'timeout' => (int) env('VIDEO_TO_GIF_API_TIMEOUT', 30),
+    ],
+
 ];

@@ -4,9 +4,9 @@
 
 @php
     $shouldOpenSceneModal = $errors->hasAny([
-        'gif',
+        'video',
         'audio',
-        'duration_seconds',
+        'scene_text',
         'next_transition_template_id',
         'transition_name',
         'transition_description',
@@ -66,12 +66,21 @@
             gap: 10px;
             min-width: 0;
             flex-wrap: nowrap;
+            width: 650px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
 
         .scene-line-name {
             font-weight: 700;
             color: var(--text);
             flex-shrink: 0;
+            display: inline-block; /* hoặc block */
+            max-width: 300px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
 
         .scene-line-meta {
@@ -253,7 +262,6 @@
             <div class="modal-header">
                 <div>
                     <h3 class="card-title" id="create-scene-modal-title">Tạo phân cảnh chính mới</h3>
-                    <div class="muted" style="margin-top: 6px;">Nhập dữ liệu cho phân cảnh mới rồi bấm tạo để lưu vào nội dung này.</div>
                 </div>
                 <button class="modal-close" type="button" id="close-create-scene-modal" aria-label="Đóng modal">×</button>
             </div>
@@ -264,17 +272,22 @@
                     <input class="form-input" type="text" name="name" value="{{ old('name') }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">GIF</label>
-                    <input class="form-input" type="file" name="gif" accept=".gif,.jpg,.jpeg,.png,.webp" required>
+                    <label class="form-label">Nội dung phân cảnh</label>
+                    <textarea class="form-input" name="scene_text" rows="5" placeholder="Nhập nội dung text của phân cảnh...">{{ old('scene_text') }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Video MP4</label>
+                    <input class="form-input" type="file" name="video" accept=".mp4,video/mp4" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ảnh minh hoạ (không bắt buộc)</label>
+                    <input class="form-input" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                    <div class="muted" style="margin-top: 8px;">Nếu cần, bạn có thể đính kèm thêm một ảnh cho phân cảnh này.</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Audio</label>
                     <input class="form-input" id="scene-audio-input" type="file" name="audio" accept="audio/*">
-                    <div class="muted" id="scene-audio-help" style="margin-top: 8px;">Nếu có audio, thời lượng sẽ tự lấy bằng thời lượng audio.</div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" id="scene-duration-label">Thời lượng khi không có audio</label>
-                    <input class="form-input" id="scene-duration-input" type="number" min="1" max="3600" name="duration_seconds" value="{{ old('duration_seconds', 3) }}">
+                    <div class="muted" style="margin-top: 8px;">Trường này hiện tại chỉ cần nhập nếu muốn xem trước nội dung video, không bắt buộc.</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Phân cảnh chuyển tiếp sau cảnh này</label>
@@ -334,9 +347,13 @@
                         <div class="scene-number">{{ $scene->position }}</div>
                         <div>
                             <div class="scene-name">{{ $scene->name }}</div>
+                            @if ($scene->scene_text)
+                                <div class="list-item-desc">{{ $scene->scene_text }}</div>
+                            @endif
                             <div class="scene-details">
                                 <span>⏱️ {{ $scene->duration_seconds }} giây</span>
                                 <span>🖼️ {{ $scene->gif_original_name ?: 'Chưa có GIF' }}</span>
+                                <span>🖼️ Ảnh: {{ $scene->image_original_name ?: 'Không có ảnh' }}</span>
                                 <span>🎵 {{ $scene->audio_original_name ?: 'Không có audio' }}</span>
                                 <span>🔀 {{ $scene->nextTransitionTemplate?->name ?: 'Không có chuyển tiếp sau cảnh này' }}</span>
                                 <span>👤 {{ $scene->created_by_name }}</span>
@@ -843,17 +860,6 @@
                 };
             });
         }
-
-        bindAudioDurationSync({
-            audioInputId: 'scene-audio-input',
-            durationInputId: 'scene-duration-input',
-            durationLabelId: 'scene-duration-label',
-            helpTextId: 'scene-audio-help',
-            emptyLabel: 'Thời lượng khi không có audio',
-            activeLabel: 'Thời lượng',
-            emptyHelp: 'Nếu có audio, thời lượng sẽ tự lấy bằng thời lượng audio.',
-            activeHelpPrefix: 'Đã lấy thời lượng theo audio:',
-        });
 
         bindAudioDurationSync({
             audioInputId: 'transition-audio-input',
