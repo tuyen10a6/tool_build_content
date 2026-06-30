@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\TextToAudioException;
 use App\Exceptions\VideoToGifException;
 use App\Models\ContentItem;
 use App\Models\Scene;
 use App\Models\TransitionTemplate;
+use App\Services\TextToAudioService;
 use App\Services\VideoToGifService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -77,10 +79,9 @@ class SceneController extends Controller
         $validated = $request->validate(
             [
                 'name' => ['required', 'string', 'max:255'],
-                'scene_text' => ['nullable', 'string'],
+                'scene_text' => ['required', 'string'],
                 'video' => ['required', 'file', 'mimetypes:video/mp4', 'mimes:mp4'],
                 'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-                'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
                 'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
                 'transition_name' => ['nullable', 'string', 'max:255'],
                 'transition_description' => ['nullable', 'string'],
@@ -109,7 +110,19 @@ class SceneController extends Controller
         } catch (VideoToGifException $exception) {
             return back()
                 ->withErrors(['video' => $exception->getMessage()])
-                ->withInput($request->except('video', 'audio', 'transition_gif', 'transition_audio'));
+                ->withInput($request->except('video', 'transition_gif', 'transition_audio'));
+        }
+
+        try {
+            $generatedAudio = app(TextToAudioService::class)->convertTextToStoredAudio($validated['scene_text']);
+        } catch (TextToAudioException $exception) {
+            if (! empty($convertedGif['gif_path'])) {
+                Storage::disk('public')->delete($convertedGif['gif_path']);
+            }
+
+            return back()
+                ->withErrors(['scene_text' => $exception->getMessage()])
+                ->withInput($request->except('video', 'transition_gif', 'transition_audio'));
         }
 
         $scene = new Scene([
@@ -123,13 +136,13 @@ class SceneController extends Controller
             'created_by_name' => $this->user()->display_name,
             'gif_path' => $convertedGif['gif_path'],
             'gif_original_name' => $convertedGif['gif_original_name'],
+            'audio_path' => $generatedAudio['audio_path'],
+            'audio_original_name' => $generatedAudio['audio_original_name'],
         ]);
 
-        if (! $request->hasFile('audio')) {
-            $scene->duration_seconds = $this->extractMediaDuration(
-                $request->file('video')->getRealPath()
-            ) ?? 3;
-        }
+        $scene->duration_seconds = $this->extractAudioDuration(
+            Storage::disk('public')->path($generatedAudio['audio_path'])
+        ) ?? $this->extractMediaDuration($request->file('video')->getRealPath()) ?? 3;
 
         $this->persistMainSceneMedia($request, $scene, $validated);
         $content->scenes()->save($scene);

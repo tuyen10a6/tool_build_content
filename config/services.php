@@ -37,4 +37,11 @@ return [
         'timeout' => (int) env('VIDEO_TO_GIF_API_TIMEOUT', 30),
     ],
 
+    'text_to_audio' => [
+        'url' => env('TEXT_TO_AUDIO_API_URL'),
+        'key' => env('TEXT_TO_AUDIO_API_KEY', env('VIDEO_TO_GIF_API_KEY')),
+        'timeout' => (int) env('TEXT_TO_AUDIO_API_TIMEOUT', env('VIDEO_TO_GIF_API_TIMEOUT', 30)),
+        'voice' => env('TEXT_TO_AUDIO_API_VOICE', 'vi-VN-HoaiMyNeural'),
+    ],
+
 ];

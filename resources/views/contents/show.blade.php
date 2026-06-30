@@ -5,7 +5,6 @@
 @php
     $shouldOpenSceneModal = $errors->hasAny([
         'video',
-        'audio',
         'scene_text',
         'next_transition_template_id',
         'transition_name',
@@ -285,9 +284,7 @@
                     <div class="muted" style="margin-top: 8px;">Nếu cần, bạn có thể đính kèm thêm một ảnh cho phân cảnh này.</div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Audio</label>
-                    <input class="form-input" id="scene-audio-input" type="file" name="audio" accept="audio/*">
-                    <div class="muted" style="margin-top: 8px;">Trường này hiện tại chỉ cần nhập nếu muốn xem trước nội dung video, không bắt buộc.</div>
+                    <div class="muted" style="margin-top: 4px;">Audio sẽ được hệ thống tự động tạo từ trường nội dung phân cảnh</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Phân cảnh chuyển tiếp sau cảnh này</label>
