@@ -36,6 +36,7 @@ class SceneCreationTest extends TestCase
             'http://convert.test/api/text-to-audio' => Http::response([
                 'status' => 'success',
                 'audio_url' => 'http://convert.test/outputs/scene-1.mp3',
+                'duration_seconds' => 9,
             ], 200),
             'http://convert.test/outputs/scene-1.gif' => Http::response('GIF89a', 200, [
                 'Content-Type' => 'image/gif',
@@ -77,6 +78,7 @@ class SceneCreationTest extends TestCase
         $this->assertSame('scene-1.gif', $scene->gif_original_name);
         $this->assertNotNull($scene->audio_path);
         $this->assertSame('scene-1.mp3', $scene->audio_original_name);
+        $this->assertSame(9, $scene->duration_seconds);
         $this->assertNotNull($scene->image_path);
         $this->assertSame('scene-cover.png', $scene->image_original_name);
         Storage::disk('public')->assertExists($scene->gif_path);
@@ -160,6 +162,7 @@ class SceneCreationTest extends TestCase
             'http://convert.test/api/text-to-audio' => Http::response([
                 'status' => 'success',
                 'audio_url' => 'http://convert.test/outputs/fallback.mp3',
+                'duration_seconds' => 6,
             ], 200),
             'http://convert.test/outputs/fallback.gif' => Http::response('GIF89a', 200, [
                 'Content-Type' => 'image/gif',
@@ -193,6 +196,7 @@ class SceneCreationTest extends TestCase
         $response->assertRedirect(route('contents.show', $content));
         $this->assertDatabaseHas('scenes', [
             'name' => 'Scene fallback',
+            'duration_seconds' => 6,
         ]);
     }
 
@@ -248,5 +252,72 @@ class SceneCreationTest extends TestCase
         ]);
         $this->assertSame([], Storage::disk('local')->allFiles('tmp/videos'));
         $this->assertSame([], Storage::disk('public')->allFiles('scenes/gifs'));
+    }
+
+    public function test_updating_scene_regenerates_audio_from_scene_text_and_updates_duration(): void
+    {
+        Storage::fake('public');
+
+        config()->set('services.text_to_audio.url', 'http://convert.test/api/text-to-audio');
+        config()->set('services.text_to_audio.key', 'secret-key');
+        config()->set('services.text_to_audio.timeout', 30);
+
+        Http::fake([
+            'http://convert.test/api/text-to-audio' => Http::response([
+                'status' => 'success',
+                'audio_url' => 'http://convert.test/outputs/updated-scene.mp3',
+                'duration_seconds' => 12,
+            ], 200),
+            'http://convert.test/outputs/updated-scene.mp3' => Http::response('fake-audio', 200, [
+                'Content-Type' => 'audio/mpeg',
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $category = Category::create([
+            'name' => 'Demo',
+            'description' => 'Demo',
+        ]);
+        $content = ContentItem::create([
+            'category_id' => $category->id,
+            'name' => 'Story',
+            'description' => 'Story',
+            'created_by' => $user->id,
+            'created_by_name' => $user->display_name,
+        ]);
+        $scene = Scene::create([
+            'content_item_id' => $content->id,
+            'scene_type' => 'main',
+            'name' => 'Scene 1',
+            'scene_text' => 'old text',
+            'gif_path' => 'scenes/gifs/old.gif',
+            'gif_original_name' => 'old.gif',
+            'audio_path' => 'scenes/audios/old.mp3',
+            'audio_original_name' => 'old.mp3',
+            'duration_seconds' => 3,
+            'position' => 1,
+            'sort_order' => 1,
+            'position_label' => '1',
+            'created_by' => $user->id,
+            'created_by_name' => $user->display_name,
+        ]);
+        Storage::disk('public')->put('scenes/audios/old.mp3', 'old-audio');
+
+        $response = $this
+            ->actingAs($user)
+            ->put(route('scenes.update', $scene), [
+                'name' => 'Scene 1 updated',
+                'scene_text' => 'new generated text',
+                'position' => 1,
+            ]);
+
+        $response->assertRedirect(route('scenes.show', $scene));
+
+        $scene->refresh();
+
+        $this->assertSame('Scene 1 updated', $scene->name);
+        $this->assertSame('new generated text', $scene->scene_text);
+        $this->assertSame('updated-scene.mp3', $scene->audio_original_name);
+        $this->assertSame(12, $scene->duration_seconds);
     }
 }

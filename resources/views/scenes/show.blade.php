@@ -87,14 +87,7 @@
                     <div class="form-group">
                         <label class="form-label">Audio hiện tại</label>
                         <div class="tag">{{ $scene->audio_original_name ?: 'Không có' }}</div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Audio mới</label>
-                        <input class="form-input" type="file" name="audio" accept="audio/*">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Thời lượng khi không có audio</label>
-                        <input class="form-input" type="number" min="1" max="3600" name="duration_seconds" value="{{ old('duration_seconds', $scene->duration_seconds) }}">
+                        <div class="muted" style="margin-top: 8px;">Audio sẽ được tự động tạo lại từ nội dung phân cảnh khi bạn bấm lưu. Thời lượng hiển thị của phân cảnh sẽ lấy theo audio này.</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Mẫu chuyển tiếp sau cảnh này</label>
@@ -104,9 +97,6 @@
                                 <option value="{{ $template->id }}" @selected(old('next_transition_template_id', $scene->next_transition_template_id) == $template->id)>{{ $template->name }} ({{ $template->duration_seconds }} giây)</option>
                             @endforeach
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label><input type="checkbox" name="remove_audio" value="1"> Xóa audio hiện tại nếu không upload audio mới</label>
                     </div>
                     <button class="btn btn-primary" type="submit">Lưu phân cảnh</button>
                 </form>

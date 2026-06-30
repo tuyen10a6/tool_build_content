@@ -44,6 +44,7 @@ class TextToAudioService
             $payload = $response->json();
             $audioUrl = is_array($payload) ? ($payload['audio_url'] ?? $payload['file_url'] ?? null) : null;
             $status = is_array($payload) ? ($payload['status'] ?? null) : null;
+            $durationSeconds = is_array($payload) ? ($payload['duration_seconds'] ?? null) : null;
 
             if ($status !== 'success' || ! is_string($audioUrl) || $audioUrl === '') {
                 throw new TextToAudioException('Không thể tạo audio từ nội dung phân cảnh. Vui lòng thử lại.');
@@ -64,6 +65,7 @@ class TextToAudioService
             return [
                 'audio_path' => $storedPath,
                 'audio_original_name' => basename(parse_url($audioUrl, PHP_URL_PATH) ?: 'generated.mp3'),
+                'duration_seconds' => is_numeric($durationSeconds) ? max(1, (int) ceil((float) $durationSeconds)) : null,
             ];
         } catch (ConnectionException|RequestException $exception) {
             report($exception);

@@ -140,9 +140,10 @@ class SceneController extends Controller
             'audio_original_name' => $generatedAudio['audio_original_name'],
         ]);
 
-        $scene->duration_seconds = $this->extractAudioDuration(
-            Storage::disk('public')->path($generatedAudio['audio_path'])
-        ) ?? $this->extractMediaDuration($request->file('video')->getRealPath()) ?? 3;
+        $scene->duration_seconds = $generatedAudio['duration_seconds']
+            ?? $this->extractAudioDuration(Storage::disk('public')->path($generatedAudio['audio_path']))
+            ?? $this->extractMediaDuration($request->file('video')->getRealPath())
+            ?? 3;
 
         $this->persistMainSceneMedia($request, $scene, $validated);
         $content->scenes()->save($scene);
@@ -161,13 +162,10 @@ class SceneController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'scene_text' => ['nullable', 'string'],
+            'scene_text' => ['required', 'string'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'video' => ['nullable', 'file', 'mimetypes:video/mp4', 'mimes:mp4'],
-            'audio' => ['nullable', 'file', 'mimetypes:audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/ogg,audio/aac'],
-            'duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
             'position' => ['required', 'integer', 'min:1'],
-            'remove_audio' => ['nullable', 'boolean'],
             'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
         ], [
             'video.mimes' => 'Chỉ hỗ trợ file MP4.',
@@ -191,9 +189,25 @@ class SceneController extends Controller
             } catch (VideoToGifException $exception) {
                 return back()
                     ->withErrors(['video' => $exception->getMessage()])
-                    ->withInput($request->except('video', 'audio'));
+                    ->withInput($request->except('video'));
+            }
+        }
+
+        try {
+            $generatedAudio = app(TextToAudioService::class)->convertTextToStoredAudio($validated['scene_text']);
+        } catch (TextToAudioException $exception) {
+            if (isset($convertedGif['gif_path']) && ! empty($convertedGif['gif_path'])) {
+                Storage::disk('public')->delete($convertedGif['gif_path']);
             }
 
+            return back()
+                ->withErrors(['scene_text' => $exception->getMessage()])
+                ->withInput($request->except('video'));
+        }
+
+        $this->persistMainSceneMedia($request, $scene, $validated, true);
+        
+        if (isset($convertedGif['gif_path'])) {
             if ($scene->gif_path) {
                 Storage::disk('public')->delete($scene->gif_path);
             }
@@ -202,14 +216,18 @@ class SceneController extends Controller
             $scene->gif_original_name = $convertedGif['gif_original_name'];
         }
 
-        $this->persistMainSceneMedia($request, $scene, $validated, true);
-
-        if ($request->boolean('remove_audio') && ! $request->hasFile('audio') && $scene->audio_path) {
+        if ($scene->audio_path) {
             Storage::disk('public')->delete($scene->audio_path);
-            $scene->audio_path = null;
-            $scene->audio_original_name = null;
-            $scene->duration_seconds = $validated['duration_seconds'] ?? $scene->duration_seconds;
         }
+
+        $scene->audio_path = $generatedAudio['audio_path'];
+        $scene->audio_original_name = $generatedAudio['audio_original_name'];
+        $scene->duration_seconds = $generatedAudio['duration_seconds']
+            ?? $this->extractAudioDuration(Storage::disk('public')->path($generatedAudio['audio_path']))
+            ?? ($request->hasFile('video')
+                ? $this->extractMediaDuration($request->file('video')->getRealPath())
+                : $scene->duration_seconds
+            ) ?? 3;
 
         $scene->save();
 
