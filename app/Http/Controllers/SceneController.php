@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\TextToAudioException;
-use App\Exceptions\VideoToGifException;
+use App\Jobs\ProcessSceneMediaJob;
 use App\Models\ContentItem;
 use App\Models\Scene;
 use App\Models\TransitionTemplate;
-use App\Services\TextToAudioService;
-use App\Services\VideoToGifService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -105,26 +103,6 @@ class SceneController extends Controller
             $transitionTemplateId = $this->createInlineTransitionTemplate($request, $validated)->id;
         }
 
-        try {
-            $convertedGif = app(VideoToGifService::class)->convertToStoredGif($request->file('video'));
-        } catch (VideoToGifException $exception) {
-            return back()
-                ->withErrors(['video' => $exception->getMessage()])
-                ->withInput($request->except('video', 'transition_gif', 'transition_audio'));
-        }
-
-        try {
-            $generatedAudio = app(TextToAudioService::class)->convertTextToStoredAudio($validated['scene_text']);
-        } catch (TextToAudioException $exception) {
-            if (! empty($convertedGif['gif_path'])) {
-                Storage::disk('public')->delete($convertedGif['gif_path']);
-            }
-
-            return back()
-                ->withErrors(['scene_text' => $exception->getMessage()])
-                ->withInput($request->except('video', 'transition_gif', 'transition_audio'));
-        }
-
         $scene = new Scene([
             'scene_type' => 'main',
             'name' => $validated['name'],
@@ -134,20 +112,19 @@ class SceneController extends Controller
             'next_transition_template_id' => $transitionTemplateId,
             'created_by' => $this->user()->id,
             'created_by_name' => $this->user()->display_name,
-            'gif_path' => $convertedGif['gif_path'],
-            'gif_original_name' => $convertedGif['gif_original_name'],
-            'audio_path' => $generatedAudio['audio_path'],
-            'audio_original_name' => $generatedAudio['audio_original_name'],
+            'media_status' => 'pending',
+            'media_error' => null,
+            'media_started_at' => null,
+            'media_completed_at' => null,
         ]);
 
-        $scene->duration_seconds = $generatedAudio['duration_seconds']
-            ?? $this->extractAudioDuration(Storage::disk('public')->path($generatedAudio['audio_path']))
-            ?? $this->extractMediaDuration($request->file('video')->getRealPath())
-            ?? 3;
+        $scene->duration_seconds = $this->extractMediaDuration($request->file('video')->getRealPath()) ?? 3;
 
         $this->persistMainSceneMedia($request, $scene, $validated);
         $content->scenes()->save($scene);
+        $this->replaceSourceVideo($scene, $request->file('video'));
         $this->rebuildTransitions($content->fresh());
+        ProcessSceneMediaJob::dispatch($scene->id);
 
         return redirect()->route('contents.show', $content)->with('status', 'Tạo phân cảnh thành công.');
     }
@@ -181,61 +158,30 @@ class SceneController extends Controller
             'scene_text' => $validated['scene_text'] ?? null,
             'position' => $newPosition,
             'next_transition_template_id' => $validated['next_transition_template_id'] ?? null,
+            'media_status' => 'pending',
+            'media_error' => null,
+            'media_started_at' => null,
+            'media_completed_at' => null,
         ]);
 
         if ($request->hasFile('video')) {
-            try {
-                $convertedGif = app(VideoToGifService::class)->convertToStoredGif($request->file('video'));
-            } catch (VideoToGifException $exception) {
-                return back()
-                    ->withErrors(['video' => $exception->getMessage()])
-                    ->withInput($request->except('video'));
-            }
-        }
-
-        try {
-            $generatedAudio = app(TextToAudioService::class)->convertTextToStoredAudio($validated['scene_text']);
-        } catch (TextToAudioException $exception) {
-            if (isset($convertedGif['gif_path']) && ! empty($convertedGif['gif_path'])) {
-                Storage::disk('public')->delete($convertedGif['gif_path']);
-            }
-
-            return back()
-                ->withErrors(['scene_text' => $exception->getMessage()])
-                ->withInput($request->except('video'));
+            $scene->duration_seconds = $this->extractMediaDuration($request->file('video')->getRealPath())
+                ?? $scene->duration_seconds
+                ?? 3;
         }
 
         $this->persistMainSceneMedia($request, $scene, $validated, true);
-        
-        if (isset($convertedGif['gif_path'])) {
-            if ($scene->gif_path) {
-                Storage::disk('public')->delete($scene->gif_path);
-            }
-
-            $scene->gif_path = $convertedGif['gif_path'];
-            $scene->gif_original_name = $convertedGif['gif_original_name'];
-        }
-
-        if ($scene->audio_path) {
-            Storage::disk('public')->delete($scene->audio_path);
-        }
-
-        $scene->audio_path = $generatedAudio['audio_path'];
-        $scene->audio_original_name = $generatedAudio['audio_original_name'];
-        $scene->duration_seconds = $generatedAudio['duration_seconds']
-            ?? $this->extractAudioDuration(Storage::disk('public')->path($generatedAudio['audio_path']))
-            ?? ($request->hasFile('video')
-                ? $this->extractMediaDuration($request->file('video')->getRealPath())
-                : $scene->duration_seconds
-            ) ?? 3;
-
         $scene->save();
+        if ($request->hasFile('video')) {
+            $this->replaceSourceVideo($scene, $request->file('video'));
+        }
 
         if ($oldPosition !== $newPosition) {
             $this->normalizeMainPositions($content, $scene->id, $newPosition);
         }
 
         $this->rebuildTransitions($content->fresh());
+        ProcessSceneMediaJob::dispatch($scene->id);
 
         return redirect()->route('scenes.show', $scene)->with('status', 'Cập nhật phân cảnh thành công.');
     }
@@ -285,6 +231,13 @@ class SceneController extends Controller
         $copy->sort_order = ((int) $scene->content->scenes()->max('sort_order')) + 1;
         $copy->created_by = $this->user()->id;
         $copy->created_by_name = $this->user()->display_name;
+        $copy->media_status = 'completed';
+        $copy->media_error = null;
+        $copy->media_started_at = null;
+        $copy->media_completed_at = null;
+        $copy->media_attempts = 0;
+        $copy->source_video_path = null;
+        $copy->source_video_original_name = null;
 
         if ($scene->gif_path) {
             $copy->gif_path = $this->duplicateFile($scene->gif_path, 'scenes/gifs');
@@ -410,6 +363,10 @@ class SceneController extends Controller
         if ($scene->image_path) {
             Storage::disk('public')->delete($scene->image_path);
         }
+
+        if ($scene->source_video_path) {
+            Storage::disk('local')->delete($scene->source_video_path);
+        }
     }
 
     private function duplicateFile(string $path, string $directory): string
@@ -489,7 +446,7 @@ class SceneController extends Controller
     private function extractMediaDuration(string $path): ?int
     {
         $command = sprintf(
-            'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s',
+            'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s 2>/dev/null',
             escapeshellarg($path)
         );
 
@@ -502,6 +459,23 @@ class SceneController extends Controller
     private function extractAudioDuration(string $path): ?int
     {
         return $this->extractMediaDuration($path);
+    }
+
+    private function replaceSourceVideo(Scene $scene, UploadedFile $video): void
+    {
+        if ($scene->source_video_path) {
+            Storage::disk('local')->delete($scene->source_video_path);
+        }
+
+        $storedPath = $video->storeAs(
+            'tmp/scene-videos',
+            Str::uuid().'.'.$video->getClientOriginalExtension()
+        );
+
+        $scene->forceFill([
+            'source_video_path' => $storedPath,
+            'source_video_original_name' => $video->getClientOriginalName(),
+        ])->save();
     }
 
     private function safeFilename(string $filename): string

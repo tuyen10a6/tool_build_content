@@ -352,6 +352,11 @@
                                 <span>🖼️ {{ $scene->gif_original_name ?: 'Chưa có GIF' }}</span>
                                 <span>🖼️ Ảnh: {{ $scene->image_original_name ?: 'Không có ảnh' }}</span>
                                 <span>🎵 {{ $scene->audio_original_name ?: 'Không có audio' }}</span>
+                                @if ($scene->isMediaPending())
+                                    <span>⏳ Đang xử lý media...</span>
+                                @elseif ($scene->hasMediaFailed())
+                                    <span>⚠️ {{ $scene->media_error ?: 'Xử lý media thất bại.' }}</span>
+                                @endif
                                 <span>🔀 {{ $scene->nextTransitionTemplate?->name ?: 'Không có chuyển tiếp sau cảnh này' }}</span>
                                 <span>👤 {{ $scene->created_by_name }}</span>
                                 <span>🗓️ {{ $scene->created_at?->format('d/m/Y H:i') }}</span>
@@ -381,13 +386,13 @@
                 <div class="scene-item">
                     <div class="scene-main">
                         <div class="scene-number">{{ $scene->position_label ?: $scene->position }}</div>
-                        <div class="scene-line-block">
-                            <div class="scene-line">
-                                <span class="scene-line-name">{{ $scene->name }}</span>
-                                <span class="scene-line-meta">{{ $scene->duration_seconds }} giây ; {{ $scene->gif_original_name ?: 'Chưa có GIF' }} ; {{ $scene->audio_original_name ?: 'Không có audio' }}</span>
+                            <div class="scene-line-block">
+                                <div class="scene-line">
+                                    <span class="scene-line-name">{{ $scene->name }}</span>
+                                    <span class="scene-line-meta">{{ $scene->duration_seconds }} giây ; {{ $scene->gif_original_name ?: 'Chưa có GIF' }} ; {{ $scene->audio_original_name ?: 'Không có audio' }}@if ($scene->isMediaPending()) ; Đang xử lý media... @elseif ($scene->hasMediaFailed()) ; Xử lý media thất bại @endif</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     <div class="actions">
                         <a class="btn btn-secondary" href="{{ route('scenes.show', $scene) }}">Xem</a>
                     </div>
@@ -588,7 +593,7 @@
                             <div class="scene-line-block">
                                 <div class="scene-line">
                                     <span class="scene-line-name">${scene.name}</span>
-                                    <span class="scene-line-meta">${scene.duration_seconds} giây ; ${scene.gif_original_name || 'Chưa có GIF'} ; ${scene.audio_original_name || 'Không có audio'}${index === state.index && !state.playing && isCurrentScenePaused(scene) ? ` ; còn ${currentSceneRemainingSeconds(scene)} giây` : ''}</span>
+                                    <span class="scene-line-meta">${scene.duration_seconds} giây ; ${scene.gif_original_name || 'Chưa có GIF'} ; ${scene.audio_original_name || 'Không có audio'}${scene.media_status === 'pending' || scene.media_status === 'processing' ? ' ; Đang xử lý media...' : ''}${scene.media_status === 'failed' ? ' ; Xử lý media thất bại' : ''}${index === state.index && !state.playing && isCurrentScenePaused(scene) ? ` ; còn ${currentSceneRemainingSeconds(scene)} giây` : ''}</span>
                                 </div>
                             </div>
                         </div>

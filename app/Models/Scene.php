@@ -22,6 +22,13 @@ class Scene extends Model
         'image_original_name',
         'audio_path',
         'audio_original_name',
+        'media_status',
+        'media_error',
+        'media_started_at',
+        'media_completed_at',
+        'media_attempts',
+        'source_video_path',
+        'source_video_original_name',
         'duration_seconds',
         'position',
         'sort_order',
@@ -37,6 +44,11 @@ class Scene extends Model
     protected $appends = [
         'gif_url',
         'audio_url',
+    ];
+
+    protected $casts = [
+        'media_started_at' => 'datetime',
+        'media_completed_at' => 'datetime',
     ];
 
     public function content(): BelongsTo
@@ -89,6 +101,16 @@ class Scene extends Model
     public function isTransition(): bool
     {
         return $this->scene_type === 'transition';
+    }
+
+    public function isMediaPending(): bool
+    {
+        return in_array($this->media_status, ['pending', 'processing'], true);
+    }
+
+    public function hasMediaFailed(): bool
+    {
+        return $this->media_status === 'failed';
     }
 
     public function getGifUrlAttribute(): ?string

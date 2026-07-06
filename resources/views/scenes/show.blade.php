@@ -19,6 +19,10 @@
             <div class="preview-screen" id="scene-preview-screen" style="max-width: 100%;">
                 @if ($scene->gif_url)
                     <img src="{{ $scene->gif_url }}" alt="{{ $scene->name }}">
+                @elseif ($scene->isMediaPending())
+                    <div class="muted">Đang xử lý media...</div>
+                @elseif ($scene->hasMediaFailed())
+                    <div class="muted">{{ $scene->media_error ?: 'Xử lý media thất bại.' }}</div>
                 @else
                     <div class="muted">Chưa có GIF</div>
                 @endif
@@ -27,7 +31,14 @@
                 <button class="btn btn-primary" type="button" id="scene-preview-play">▶ Chạy</button>
                 <button class="btn btn-secondary" type="button" id="scene-preview-stop">⏹ Dừng</button>
             </div>
-            <div class="muted" style="margin-top: 12px; text-align: center;">{{ $scene->duration_seconds }} giây{{ $scene->audio_url ? ' | Có audio' : ' | Không có audio' }}</div>
+            <div class="muted" style="margin-top: 12px; text-align: center;">
+                {{ $scene->duration_seconds }} giây{{ $scene->audio_url ? ' | Có audio' : ' | Không có audio' }}
+                @if ($scene->isMediaPending())
+                    | Đang xử lý media...
+                @elseif ($scene->hasMediaFailed())
+                    | Xử lý media thất bại
+                @endif
+            </div>
         </div>
         <div class="card">
             @if ($scene->isTransition())
@@ -82,12 +93,12 @@
                     <div class="form-group">
                         <label class="form-label">Video MP4 mới</label>
                         <input class="form-input" type="file" name="video" accept=".mp4,video/mp4">
-                        <div class="muted" style="margin-top: 8px;">Nếu upload video mới, hệ thống sẽ convert lại sang GIF và thay thế GIF đang hiển thị ở khung xem trước.</div>
+                        <div class="muted" style="margin-top: 8px;">Nếu upload video mới, hệ thống sẽ xử lý nền để convert lại sang GIF và thay thế GIF đang hiển thị ở khung xem trước.</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Audio hiện tại</label>
                         <div class="tag">{{ $scene->audio_original_name ?: 'Không có' }}</div>
-                        <div class="muted" style="margin-top: 8px;">Audio sẽ được tự động tạo lại từ nội dung phân cảnh khi bạn bấm lưu. Thời lượng hiển thị của phân cảnh sẽ lấy theo audio này.</div>
+                        <div class="muted" style="margin-top: 8px;">Audio sẽ được tự động tạo lại từ nội dung phân cảnh sau khi bạn bấm lưu. Trong lúc xử lý nền, phân cảnh vẫn hiển thị bình thường với trạng thái đang xử lý media.</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Mẫu chuyển tiếp sau cảnh này</label>

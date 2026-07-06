@@ -19,6 +19,29 @@ class VideoToGifService
 
     public function convertToStoredGif(UploadedFile $video): array
     {
+        $tempPath = $video->storeAs('tmp/videos', Str::uuid().'.'.$video->getClientOriginalExtension());
+
+        try {
+            return $this->convertFromStoredLocalPath($tempPath, $video->getClientOriginalName());
+        } finally {
+            Storage::disk('local')->delete($tempPath);
+        }
+    }
+
+    public function convertStoredVideoToGif(string $storedPath, ?string $originalName = null): array
+    {
+        if (! Storage::disk('local')->exists($storedPath)) {
+            throw new VideoToGifException('Không tìm thấy video nguồn để chuyển đổi sang GIF.');
+        }
+
+        return $this->convertFromStoredLocalPath(
+            $storedPath,
+            $originalName ?: basename($storedPath)
+        );
+    }
+
+    private function convertFromStoredLocalPath(string $storedPath, string $originalName): array
+    {
         $apiUrl = (string) config('services.video_to_gif.url');
         $apiKey = (string) config('services.video_to_gif.key');
         $timeout = (int) config('services.video_to_gif.timeout', 30);
@@ -27,14 +50,13 @@ class VideoToGifService
             throw new VideoToGifException('Chưa cấu hình API chuyển đổi Video sang GIF.');
         }
 
-        $tempPath = $video->storeAs('tmp/videos', Str::uuid().'.'.$video->getClientOriginalExtension());
-        $absoluteTempPath = Storage::disk('local')->path($tempPath);
+        $absoluteTempPath = Storage::disk('local')->path($storedPath);
 
         try {
             $response = $this->sendConvertRequest(
                 $this->candidateApiUrls($apiUrl),
                 $absoluteTempPath,
-                $video->getClientOriginalName(),
+                $originalName,
                 $apiKey,
                 $timeout,
             );
@@ -55,20 +77,18 @@ class VideoToGifService
             $gifResponse->throw();
 
             $extension = pathinfo(parse_url($gifUrl, PHP_URL_PATH) ?: 'converted.gif', PATHINFO_EXTENSION) ?: 'gif';
-            $storedPath = 'scenes/gifs/'.Str::uuid().'.'.$extension;
+            $storedGifPath = 'scenes/gifs/'.Str::uuid().'.'.$extension;
 
-            Storage::disk('public')->put($storedPath, $gifResponse->body());
+            Storage::disk('public')->put($storedGifPath, $gifResponse->body());
 
             return [
-                'gif_path' => $storedPath,
+                'gif_path' => $storedGifPath,
                 'gif_original_name' => basename(parse_url($gifUrl, PHP_URL_PATH) ?: 'converted.gif'),
             ];
         } catch (ConnectionException|RequestException $exception) {
             report($exception);
 
             throw new VideoToGifException('Không thể chuyển đổi Video sang GIF. Kiểm tra lại VIDEO_TO_GIF_API_URL hoặc thử lại.', previous: $exception);
-        } finally {
-            Storage::disk('local')->delete($tempPath);
         }
     }
 
