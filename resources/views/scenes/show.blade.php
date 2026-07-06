@@ -17,10 +17,10 @@
                 <h3 class="card-title">Xem trước phân cảnh</h3>
             </div>
             <div class="preview-screen" id="scene-preview-screen" style="max-width: 100%;">
-                @if ($scene->gif_url)
-                    <img src="{{ $scene->gif_url }}" alt="{{ $scene->name }}">
-                @elseif ($scene->isMediaPending())
+                @if ($scene->isMediaPending())
                     <div class="muted">Đang xử lý media...</div>
+                @elseif ($scene->gif_url)
+                    <img src="{{ $scene->gif_url }}" alt="{{ $scene->name }}">
                 @elseif ($scene->hasMediaFailed())
                     <div class="muted">{{ $scene->media_error ?: 'Xử lý media thất bại.' }}</div>
                 @else
@@ -67,7 +67,7 @@
                 <div class="card-header">
                     <h3 class="card-title">Cập nhật phân cảnh chính</h3>
                 </div>
-                <form method="POST" action="{{ route('scenes.update', $scene) }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('scenes.update', $scene) }}" enctype="multipart/form-data" id="update-scene-form">
                     @csrf
                     @method('PUT')
                     <div class="form-group">
@@ -109,7 +109,10 @@
                             @endforeach
                         </select>
                     </div>
-                    <button class="btn btn-primary" type="submit">Lưu phân cảnh</button>
+                    <button class="btn btn-primary" type="submit" id="update-scene-submit">
+                        <span id="update-scene-submit-text">Lưu phân cảnh</span>
+                        <span class="btn-loading-spinner" id="update-scene-submit-spinner" style="display: none;"></span>
+                    </button>
                 </form>
 
                 <form method="POST" action="{{ route('scenes.destroy', $scene) }}" style="margin-top: 12px;">
@@ -127,6 +130,10 @@
         const scenePreview = @json($scene);
         const scenePreviewPlay = document.getElementById('scene-preview-play');
         const scenePreviewStop = document.getElementById('scene-preview-stop');
+        const updateSceneForm = document.getElementById('update-scene-form');
+        const updateSceneSubmit = document.getElementById('update-scene-submit');
+        const updateSceneSubmitText = document.getElementById('update-scene-submit-text');
+        const updateSceneSubmitSpinner = document.getElementById('update-scene-submit-spinner');
         let scenePreviewAudio = null;
         let scenePreviewTimer = null;
         let scenePreviewRemainingMs = Math.max(1, (scenePreview.duration_seconds || 3) * 1000);
@@ -166,6 +173,10 @@
         }
 
         function playScenePreview() {
+            if (scenePreview.media_status === 'pending' || scenePreview.media_status === 'processing') {
+                return;
+            }
+
             clearScenePreviewPlayback();
             window.togglePreviewButtons(scenePreviewPlay, scenePreviewStop, true);
 
@@ -186,5 +197,19 @@
 
         scenePreviewPlay?.addEventListener('click', () => playScenePreview());
         scenePreviewStop?.addEventListener('click', () => stopScenePreview());
+
+        updateSceneForm?.addEventListener('submit', () => {
+            if (!updateSceneSubmit || !updateSceneSubmitText || !updateSceneSubmitSpinner) {
+                return;
+            }
+
+            updateSceneSubmit.disabled = true;
+            updateSceneSubmitText.textContent = 'Đang lưu và xử lý media...';
+            updateSceneSubmitSpinner.style.display = 'inline-block';
+        });
+
+        if (scenePreview.media_status === 'pending' || scenePreview.media_status === 'processing') {
+            window.setTimeout(() => window.location.reload(), 5000);
+        }
     </script>
 @endsection

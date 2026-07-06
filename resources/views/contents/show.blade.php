@@ -17,6 +17,7 @@
         'category_id',
         'description',
     ]);
+    $hasPendingSceneMedia = $content->scenes->contains(fn ($scene) => in_array($scene->media_status, ['pending', 'processing'], true));
 @endphp
 
 @section('content')
@@ -349,9 +350,9 @@
                             @endif
                             <div class="scene-details">
                                 <span>⏱️ {{ $scene->duration_seconds }} giây</span>
-                                <span>🖼️ {{ $scene->gif_original_name ?: 'Chưa có GIF' }}</span>
+                                <span>🖼️ {{ $scene->isMediaPending() ? 'Đang xử lý media...' : ($scene->gif_original_name ?: 'Chưa có GIF') }}</span>
                                 <span>🖼️ Ảnh: {{ $scene->image_original_name ?: 'Không có ảnh' }}</span>
-                                <span>🎵 {{ $scene->audio_original_name ?: 'Không có audio' }}</span>
+                                <span>🎵 {{ $scene->isMediaPending() ? 'Đang xử lý media...' : ($scene->audio_original_name ?: 'Không có audio') }}</span>
                                 @if ($scene->isMediaPending())
                                     <span>⏳ Đang xử lý media...</span>
                                 @elseif ($scene->hasMediaFailed())
@@ -389,7 +390,7 @@
                             <div class="scene-line-block">
                                 <div class="scene-line">
                                     <span class="scene-line-name">{{ $scene->name }}</span>
-                                    <span class="scene-line-meta">{{ $scene->duration_seconds }} giây ; {{ $scene->gif_original_name ?: 'Chưa có GIF' }} ; {{ $scene->audio_original_name ?: 'Không có audio' }}@if ($scene->isMediaPending()) ; Đang xử lý media... @elseif ($scene->hasMediaFailed()) ; Xử lý media thất bại @endif</span>
+                                    <span class="scene-line-meta">{{ $scene->duration_seconds }} giây ; {{ $scene->isMediaPending() ? 'Đang xử lý media...' : ($scene->gif_original_name ?: 'Chưa có GIF') }} ; {{ $scene->isMediaPending() ? 'Đang xử lý media...' : ($scene->audio_original_name ?: 'Không có audio') }}@if ($scene->isMediaPending()) ; Đang xử lý media... @elseif ($scene->hasMediaFailed()) ; Xử lý media thất bại @endif</span>
                                 </div>
                             </div>
                         </div>
@@ -445,8 +446,14 @@
 
             const currentScene = () => state.sequence[state.index] || null;
 
+            const isSceneProcessing = (scene) => scene?.media_status === 'pending' || scene?.media_status === 'processing';
+
             const isCurrentScenePaused = (scene = currentScene()) => {
                 if (!scene) {
+                    return false;
+                }
+
+                if (isSceneProcessing(scene)) {
                     return false;
                 }
 
@@ -463,6 +470,10 @@
                     return 0;
                 }
 
+                if (isSceneProcessing(scene)) {
+                    return Math.max(0, Math.ceil(scene.duration_seconds || 3));
+                }
+
                 if (scene.audio_url) {
                     return Math.max(0, Math.ceil((scene.duration_seconds || 3) - (state.pausedAudioTime || 0)));
                 }
@@ -471,7 +482,7 @@
             };
 
             const primeSceneMedia = (scene) => {
-                if (!scene) {
+                if (!scene || isSceneProcessing(scene)) {
                     return;
                 }
 
@@ -502,6 +513,15 @@
             };
 
             const showSceneImage = async (scene) => {
+                if (isSceneProcessing(scene)) {
+                    imageElement.classList.remove('is-visible');
+                    imageElement.removeAttribute('src');
+                    imageElement.alt = '';
+                    placeholderElement.innerHTML = `${scene?.name || emptyMessage}<br>Đang xử lý media...`;
+                    placeholderElement.style.display = 'flex';
+                    return;
+                }
+
                 if (!scene?.gif_url) {
                     imageElement.classList.remove('is-visible');
                     imageElement.removeAttribute('src');
@@ -593,7 +613,7 @@
                             <div class="scene-line-block">
                                 <div class="scene-line">
                                     <span class="scene-line-name">${scene.name}</span>
-                                    <span class="scene-line-meta">${scene.duration_seconds} giây ; ${scene.gif_original_name || 'Chưa có GIF'} ; ${scene.audio_original_name || 'Không có audio'}${scene.media_status === 'pending' || scene.media_status === 'processing' ? ' ; Đang xử lý media...' : ''}${scene.media_status === 'failed' ? ' ; Xử lý media thất bại' : ''}${index === state.index && !state.playing && isCurrentScenePaused(scene) ? ` ; còn ${currentSceneRemainingSeconds(scene)} giây` : ''}</span>
+                                    <span class="scene-line-meta">${scene.duration_seconds} giây ; ${isSceneProcessing(scene) ? 'Đang xử lý media...' : (scene.gif_original_name || 'Chưa có GIF')} ; ${isSceneProcessing(scene) ? 'Đang xử lý media...' : (scene.audio_original_name || 'Không có audio')}${isSceneProcessing(scene) ? ' ; Đang xử lý media...' : ''}${scene.media_status === 'failed' ? ' ; Xử lý media thất bại' : ''}${index === state.index && !state.playing && isCurrentScenePaused(scene) ? ` ; còn ${currentSceneRemainingSeconds(scene)} giây` : ''}</span>
                                 </div>
                             </div>
                         </div>
@@ -655,6 +675,12 @@
                 renderSequenceList();
 
                 if (!autoplay) {
+                    return;
+                }
+
+                if (isSceneProcessing(scene)) {
+                    state.startedAt = Date.now();
+                    state.timer = setTimeout(() => advanceScene(), state.remainingMs || (scene.duration_seconds || 3) * 1000);
                     return;
                 }
 
@@ -744,6 +770,7 @@
         const closeCreateSceneModal = document.getElementById('close-create-scene-modal');
         const cancelCreateSceneModal = document.getElementById('cancel-create-scene-modal');
         const shouldOpenSceneModal = @json($shouldOpenSceneModal);
+        const hasPendingSceneMedia = @json($hasPendingSceneMedia);
 
         function syncModalBodyState() {
             const hasOpenModal = document.querySelector('.modal-overlay.is-open');
@@ -885,8 +912,12 @@
             }
 
             createSceneSubmit.disabled = true;
-            createSceneSubmitText.textContent = 'Đang tạo phân cảnh...';
+            createSceneSubmitText.textContent = 'Đang tạo và xử lý media...';
             createSceneSubmitSpinner.style.display = 'inline-block';
         });
+
+        if (hasPendingSceneMedia) {
+            window.setTimeout(() => window.location.reload(), 5000);
+        }
     </script>
 @endsection
