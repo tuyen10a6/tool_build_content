@@ -77,18 +77,17 @@ class ExportController extends Controller
         $zip = new ZipArchive();
         $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 
-        $folder = $this->safeName($content->name);
-        $zip->addFromString($folder.'/content.md', $this->contentMarkdown($content));
+        $folder = $this->safeFolderName($content->name);
+        $mainScenes = $content->scenes
+            ->where('scene_type', 'main')
+            ->sortBy('position')
+            ->values();
 
-        $orderedScenes = $content->scenes->sortBy([
-            ['sort_order', 'asc'],
-            ['position', 'asc'],
-        ])->values();
+        $zip->addFromString($folder.'/story.md', $this->storyMarkdown($content, $mainScenes, $folder));
 
-        foreach ($orderedScenes as $scene) {
-            $sceneFolder = $folder.'/'.$this->safeName($scene->position_label ?: (string) $scene->position);
-            $zip->addFromString($sceneFolder.'/scene.md', $this->sceneMarkdown($scene));
-            $this->addMedia($zip, $sceneFolder, $scene);
+        foreach ($mainScenes as $scene) {
+            $gifFileName = $this->exportGifFileName($content, $scene);
+            $this->addGifMedia($zip, $folder, $scene, $gifFileName);
         }
 
         $zip->close();
@@ -120,6 +119,15 @@ class ExportController extends Controller
         }
     }
 
+    private function addGifMedia(ZipArchive $zip, string $folder, Scene $scene, string $fileName): void
+    {
+        if (! $scene->gif_path || ! Storage::disk('public')->exists($scene->gif_path)) {
+            return;
+        }
+
+        $zip->addFromString($folder.'/'.$fileName, Storage::disk('public')->get($scene->gif_path));
+    }
+
     private function sceneMarkdown(Scene $scene): string
     {
         return implode("\n", [
@@ -136,41 +144,63 @@ class ExportController extends Controller
         ]);
     }
 
-    private function contentMarkdown(ContentItem $content): string
+    private function storyMarkdown(ContentItem $content, $scenes, string $folder): string
     {
-        $lines = [
-            '# '.$content->name,
-            '',
-            '- Danh mục: '.$content->category->name,
-            '- Mô tả: '.($content->description ?: 'Không có'),
-            '- Số phân cảnh chính: '.$content->scenes->where('scene_type', 'main')->count(),
-            '- Tổng số thư mục xuất: '.$content->scenes->count(),
-            '',
-            '## Danh sách thư mục xuất',
-            '',
-        ];
+        $lines = [];
 
-        foreach ($content->scenes->sortBy([
-            ['sort_order', 'asc'],
-            ['position', 'asc'],
-        ]) as $scene) {
-            $lines[] = sprintf(
-                '%s. %s | %s | GIF: %s | Audio: %s | %d giây',
-                $scene->position_label ?: $scene->position,
-                $scene->name,
-                $scene->scene_type === 'transition' ? 'Chuyển tiếp' : 'Chính',
-                $scene->gif_original_name ?: 'Không có',
-                $scene->audio_original_name ?: 'Không có',
-                $scene->duration_seconds
-            );
+        foreach ($scenes as $scene) {
+            $text = trim((string) $scene->scene_text);
+
+            if ($text !== '') {
+                $lines[] = $text.' /';
+            }
+
+            if ($scene->gif_path && Storage::disk('public')->exists($scene->gif_path)) {
+                $gifFileName = $this->exportGifFileName($content, $scene);
+                $lines[] = sprintf('[%s/%s](./%s).', $folder, $gifFileName, $gifFileName);
+            }
+
+            $lines[] = '';
         }
 
-        return implode("\n", $lines);
+        return rtrim(implode("\n", $lines));
     }
 
     private function safeName(string $value): string
     {
         return Str::slug($value) ?: 'export';
+    }
+
+    private function safeFolderName(string $value): string
+    {
+        $ascii = Str::ascii($value);
+        $folder = preg_replace('/[^A-Za-z0-9]+/', '', strtolower($ascii)) ?: 'export';
+
+        return $folder;
+    }
+
+    private function exportGifFileName(ContentItem $content, Scene $scene): string
+    {
+        $prefix = $this->contentInitials($content->name);
+        $position = preg_replace('/[^0-9A-Za-z]+/', '', (string) ($scene->position_label ?: $scene->position)) ?: (string) $scene->position;
+
+        return $prefix.$position.'.GIF';
+    }
+
+    private function contentInitials(string $value): string
+    {
+        $ascii = trim(Str::ascii($value));
+        $words = preg_split('/\s+/', $ascii, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        if ($words === []) {
+            return 'SCN';
+        }
+
+        $initials = collect($words)
+            ->map(fn (string $word) => strtoupper(substr($word, 0, 1)))
+            ->implode('');
+
+        return $initials !== '' ? $initials : 'SCN';
     }
 
     private function makeZipPath(string $prefix): string
