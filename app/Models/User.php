@@ -70,6 +70,16 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isReviewer(): bool
+    {
+        return $this->role === 'reviewer';
+    }
+
+    public function canReviewContent(): bool
+    {
+        return $this->isAdmin() || $this->isReviewer();
+    }
+
     public function isLocked(): bool
     {
         return $this->status === 'locked';

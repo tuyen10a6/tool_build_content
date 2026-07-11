@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContentItem;
+use App\Models\Scene;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -33,5 +35,57 @@ class Controller extends BaseController
         }
 
         abort_unless((int) $model->getAttribute($column) === (int) $this->user()->id, Response::HTTP_FORBIDDEN);
+    }
+
+    protected function authorizeContentView(ContentItem $content): void
+    {
+        if ($this->user()->canReviewContent()) {
+            return;
+        }
+
+        abort_unless((int) $content->created_by === (int) $this->user()->id, Response::HTTP_FORBIDDEN);
+    }
+
+    protected function authorizeContentEdit(ContentItem $content): void
+    {
+        if ($this->user()->isAdmin()) {
+            return;
+        }
+
+        abort_unless(
+            $this->user()->role === 'user'
+            && (int) $content->created_by === (int) $this->user()->id
+            && $content->isEditableByOwner(),
+            Response::HTTP_FORBIDDEN
+        );
+    }
+
+    protected function authorizeContentReview(ContentItem $content): void
+    {
+        if ($this->user()->isAdmin()) {
+            return;
+        }
+
+        abort_unless($this->user()->isReviewer(), Response::HTTP_FORBIDDEN);
+    }
+
+    protected function authorizeContentExport(ContentItem $content): void
+    {
+        $this->authorizeAdmin();
+    }
+
+    protected function authorizeSceneEdit(Scene $scene): void
+    {
+        if ($this->user()->isAdmin()) {
+            return;
+        }
+
+        abort_unless(
+            $this->user()->role === 'user'
+            && (int) $scene->created_by === (int) $this->user()->id
+            && $scene->content
+            && $scene->content->isEditableByOwner(),
+            Response::HTTP_FORBIDDEN
+        );
     }
 }

@@ -94,6 +94,11 @@
         .status-pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid var(--border); }
         .status-pill-active { background: rgba(22, 163, 74, 0.14); color: #86efac; border-color: rgba(22, 163, 74, 0.26); }
         .status-pill-locked { background: rgba(239, 68, 68, 0.14); color: #fca5a5; border-color: rgba(239, 68, 68, 0.26); }
+        .status-pill-draft { background: rgba(148, 163, 184, 0.14); color: #808182; border-color: rgba(148, 163, 184, 0.28); }
+        .status-pill-pending-review { background: rgba(245, 158, 11, 0.14); color: #fcd34d; border-color: rgba(245, 158, 11, 0.30); }
+        .status-pill-needs-revision { background: rgba(239, 68, 68, 0.14); color: #595b5a; border-color: rgba(239, 68, 68, 0.26); }
+        .status-pill-approved { background: rgba(3, 235, 88, 0.14); color: #595b5a; border-color: rgba(34, 197, 94, 0.28); }
+        .status-pill-completed { background: rgba(59, 130, 246, 0.14); color: #1d7be6; border-color: rgba(59, 130, 246, 0.30); }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } .sidebar { display: none; } .mobile-topbar { display: block; } .mobile-nav { display: grid; } .main-content { padding: 20px 20px 96px; } }
@@ -116,7 +121,7 @@
                 </div>
                 <div class="user-panel">
                     <div class="user-panel-name">{{ auth()->user()->display_name }}</div>
-                    <div class="user-panel-meta">{{ auth()->user()->username }} · {{ auth()->user()->role === 'admin' ? 'Admin' : 'User' }}</div>
+                    <div class="user-panel-meta">{{ auth()->user()->username }} · {{ auth()->user()->role === 'admin' ? 'Admin' : (auth()->user()->role === 'reviewer' ? 'Reviewer' : 'User') }}</div>
                 </div>
             </div>
             <a href="{{ route('categories.index') }}" class="nav-item {{ request()->routeIs('categories.*') ? 'active' : '' }}">🗂️ Danh mục</a>

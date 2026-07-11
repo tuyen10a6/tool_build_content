@@ -3,6 +3,24 @@
 @section('title', $content->name)
 
 @php
+    $statusLabels = [
+        'draft' => 'Mới',
+        'pending_review' => 'Chờ duyệt',
+        'needs_revision' => 'Cần sửa',
+        'approved' => 'Đã duyệt',
+        'completed' => 'Hoàn thành',
+    ];
+    $statusClasses = [
+        'draft' => 'status-pill-draft',
+        'pending_review' => 'status-pill-pending-review',
+        'needs_revision' => 'status-pill-needs-revision',
+        'approved' => 'status-pill-approved',
+        'completed' => 'status-pill-completed',
+    ];
+    $currentUser = auth()->user();
+    $canEditContent = $currentUser->isAdmin() || ($currentUser->role === 'user' && $content->isEditableByOwner() && (int) $content->created_by === (int) $currentUser->id);
+    $canReviewContent = $currentUser->canReviewContent();
+    $canSubmitReview = $currentUser->role === 'user' && (int) $content->created_by === (int) $currentUser->id && in_array($content->approval_status, ['draft', 'needs_revision'], true);
     $shouldOpenSceneModal = $errors->hasAny([
         'video',
         'scene_text',
@@ -162,7 +180,9 @@
     </style>
     <div class="header">
         <a class="btn btn-secondary" href="{{ route('contents.index') }}">← Quay lại</a>
-        <a class="btn btn-primary" href="{{ route('exports.contents', $content) }}">📦 Xuất nội dung</a>
+        @if ($currentUser->isAdmin())
+            <a class="btn btn-primary" href="{{ route('exports.contents', $content) }}">📦 Xuất nội dung</a>
+        @endif
     </div>
     <div style="display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap;" class="card">
         <div>
@@ -182,11 +202,25 @@
                 <span class="muted">Tổng thư mục xuất:</span>
                 <span class="stat-value">{{ $content->scenes->count() }}</span>
             </div>
+            <div class="stat-item">
+                <span class="muted">Tình trạng:</span>
+                <span class="status-pill {{ $statusClasses[$content->approval_status] ?? 'status-pill-draft' }}">
+                    {{ $statusLabels[$content->approval_status] ?? $content->approval_status }}
+                </span>
+            </div>
           </div>
         </div>
         <div class="actions" style="justify-content: flex-end;">
-            <button class="btn btn-secondary" type="button" id="open-update-content-modal">✏️ Cập nhật nội dung</button>
-            <button class="btn btn-primary" type="button" id="open-create-scene-modal">+ Tạo phân cảnh</button>
+            @if ($canSubmitReview)
+                <form method="POST" action="{{ route('contents.submit-review', $content) }}">
+                    @csrf
+                    <button class="btn btn-primary" type="submit">Gửi duyệt</button>
+                </form>
+            @endif
+            @if ($canEditContent)
+                <button class="btn btn-secondary" type="button" id="open-update-content-modal">✏️ Cập nhật nội dung</button>
+                <button class="btn btn-primary" type="button" id="open-create-scene-modal">+ Tạo phân cảnh</button>
+            @endif
         </div>
     
     </div>
@@ -194,6 +228,69 @@
     <div class="tabs" style="margin-top: 20px;">
             <a class="tab tab-link active" href="{{ route('contents.index') }}">Danh sách nội dung</a>
         <a class="tab tab-link" href="{{ route('transition-templates.index') }}">Mẫu chuyển tiếp</a>
+    </div>
+    <div class="grid grid-2" style="margin-top: 20px;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Thông tin duyệt</h3>
+            </div>
+            <div class="stack">
+                <div class="list-item">
+                    <div class="list-item-title">Trạng thái hiện tại</div>
+                    <div class="list-item-meta">
+                        <span class="status-pill {{ $statusClasses[$content->approval_status] ?? 'status-pill-draft' }}">
+                            {{ $statusLabels[$content->approval_status] ?? $content->approval_status }}
+                        </span>
+                        <span class="tag">Người tạo: {{ $content->created_by_name ?: 'Không rõ' }}</span>
+                        <span class="tag">Người duyệt: {{ $content->reviewed_by_name ?: 'Chưa có' }}</span>
+                        <span class="tag">Số lần yêu cầu sửa: {{ (int) $content->revision_requested_count }}</span>
+                    </div>
+                    <div class="list-item-desc" style="margin-top: 10px;">
+                        Nhận xét hiện tại: {{ $content->review_comment ?: 'Chưa có nhận xét/phê duyệt.' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="review-panel">
+            <div class="card-header">
+                <h3 class="card-title">{{ $canReviewContent ? 'Nhận xét và duyệt content' : 'Nhận xét kiểm duyệt' }}</h3>
+            </div>
+            @if ($canReviewContent)
+                <form method="POST" action="{{ route('contents.review', $content) }}" id="content-review-form">
+                    @csrf
+                    <div class="form-group">
+                        <label class="form-label">Nội dung nhận xét/phê duyệt</label>
+                        <textarea class="form-input" name="review_comment" rows="5" placeholder="Nhập nhận xét cho content này...">{{ old('review_comment', $content->review_comment) }}</textarea>
+                    </div>
+                    @if ($currentUser->isAdmin())
+                        <div class="form-group">
+                            <label class="form-label">Cập nhật tình trạng</label>
+                            <select class="form-input" name="approval_status">
+                                @foreach ($statusLabels as $statusValue => $statusLabel)
+                                    <option value="{{ $statusValue }}" @selected(old('approval_status', $content->approval_status) === $statusValue)>{{ $statusLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-primary" type="submit" id="content-review-submit">
+                                <span id="content-review-submit-text">Lưu trạng thái</span>
+                                <span class="btn-loading-spinner" id="content-review-submit-spinner" style="display: none;"></span>
+                            </button>
+                        </div>
+                    @else
+                        <div class="actions">
+                            <button class="btn btn-secondary" type="submit" name="approval_status" value="needs_revision" data-loading-label="Đang gửi yêu cầu sửa...">Yêu cầu sửa</button>
+                            <button class="btn btn-primary" type="submit" name="approval_status" value="approved" data-loading-label="Đang duyệt...">Duyệt</button>
+                        </div>
+                    @endif
+                </form>
+            @else
+                <div class="list-item-desc">
+                    {{ $content->review_comment ?: 'Chưa có nhận xét nào từ reviewer/admin.' }}
+                </div>
+            @endif
+        </div>
     </div>
     <div class="card" style="margin-top: 20px;">
         <div class="card-header">
@@ -217,6 +314,7 @@
             </div>
         </div>
     </div>
+    @if ($canEditContent)
     <div class="modal-overlay" id="update-content-modal" aria-hidden="true">
         <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="update-content-modal-title">
             <div class="modal-header">
@@ -334,6 +432,7 @@
             </form>
         </div>
     </div>
+    @endif
     <div class="card" style="margin-top: 20px;">
         <div class="card-header">
             <h3 class="card-title">Phân cảnh chính</h3>
@@ -366,17 +465,56 @@
                     </div>
                     <div class="actions">
                         <a class="btn btn-secondary" href="{{ route('scenes.show', $scene) }}">Chi tiết</a>
-                        <form method="POST" action="{{ route('scenes.duplicate', $scene) }}">
-                            @csrf
-                            <button class="btn btn-secondary" type="submit">Nhân bản</button>
-                        </form>
-                        <a class="btn btn-secondary" href="{{ route('exports.scenes', $scene) }}">Xuất</a>
+                        @if ($canEditContent)
+                            <form method="POST" action="{{ route('scenes.duplicate', $scene) }}">
+                                @csrf
+                                <button class="btn btn-secondary" type="submit">Nhân bản</button>
+                            </form>
+                        @endif
+                        @if ($currentUser->isAdmin())
+                            <a class="btn btn-secondary" href="{{ route('exports.scenes', $scene) }}">Xuất</a>
+                        @endif
                     </div>
                 </div>
             @empty
                 <div class="empty-state">Nội dung này chưa có phân cảnh chính nào.</div>
             @endforelse
         </div>
+    </div>
+    <div class="card" style="margin-top: 20px;">
+        <div class="card-header">
+            <h3 class="card-title">Lịch sử kiểm duyệt</h3>
+        </div>
+        @if ($content->reviewHistories->isEmpty())
+            <div class="empty-state">Chưa có lịch sử kiểm duyệt cho content này.</div>
+        @else
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Thời điểm</th>
+                            <th>Người cập nhật</th>
+                            <th>Vai trò</th>
+                            <th>Từ trạng thái</th>
+                            <th>Sang trạng thái</th>
+                            <th>Nhận xét</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($content->reviewHistories as $history)
+                            <tr>
+                                <td>{{ $history->created_at?->format('d/m/Y H:i') ?: '-' }}</td>
+                                <td>{{ $history->acted_by_name ?: 'Không rõ' }}</td>
+                                <td>{{ $history->acted_role ?: '-' }}</td>
+                                <td>{{ $statusLabels[$history->from_status] ?? ($history->from_status ?: '-') }}</td>
+                                <td>{{ $statusLabels[$history->to_status] ?? $history->to_status }}</td>
+                                <td>{{ $history->comment ?: 'Không có' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
     <div class="card" style="margin-top: 20px;">
         <div class="card-header">
@@ -905,6 +1043,10 @@
         const createSceneSubmit = document.getElementById('create-scene-submit');
         const createSceneSubmitText = document.getElementById('create-scene-submit-text');
         const createSceneSubmitSpinner = document.getElementById('create-scene-submit-spinner');
+        const contentReviewForm = document.getElementById('content-review-form');
+        const contentReviewSubmit = document.getElementById('content-review-submit');
+        const contentReviewSubmitText = document.getElementById('content-review-submit-text');
+        const contentReviewSubmitSpinner = document.getElementById('content-review-submit-spinner');
 
         createSceneForm?.addEventListener('submit', () => {
             if (!createSceneSubmit || !createSceneSubmitText || !createSceneSubmitSpinner) {
@@ -914,6 +1056,33 @@
             createSceneSubmit.disabled = true;
             createSceneSubmitText.textContent = 'Đang tạo và xử lý media...';
             createSceneSubmitSpinner.style.display = 'inline-block';
+        });
+
+        contentReviewForm?.addEventListener('submit', (event) => {
+            const submitter = event.submitter;
+
+            if (submitter instanceof HTMLButtonElement && submitter !== contentReviewSubmit) {
+                const originalText = submitter.dataset.originalText || submitter.textContent || '';
+                submitter.dataset.originalText = originalText;
+                submitter.disabled = true;
+                submitter.textContent = submitter.dataset.loadingLabel || 'Đang xử lý...';
+
+                contentReviewForm.querySelectorAll('button[type="submit"]').forEach((button) => {
+                    if (button !== submitter) {
+                        button.disabled = true;
+                    }
+                });
+
+                return;
+            }
+
+            if (!contentReviewSubmit || !contentReviewSubmitText || !contentReviewSubmitSpinner) {
+                return;
+            }
+
+            contentReviewSubmit.disabled = true;
+            contentReviewSubmitText.textContent = 'Đang lưu trạng thái...';
+            contentReviewSubmitSpinner.style.display = 'inline-block';
         });
 
         if (hasPendingSceneMedia) {

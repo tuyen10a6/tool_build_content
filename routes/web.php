@@ -54,6 +54,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
     Route::put('/contents/{content}', [ContentController::class, 'update'])->name('contents.update');
     Route::delete('/contents/{content}', [ContentController::class, 'destroy'])->name('contents.destroy');
+    Route::post('/contents/{content}/submit-review', [ContentController::class, 'submitReview'])->name('contents.submit-review');
+    Route::post('/contents/{content}/review', [ContentController::class, 'review'])->name('contents.review');
 
     Route::get('/transition-templates', [TransitionTemplateController::class, 'index'])->name('transition-templates.index');
     Route::get('/transition-templates/{transitionTemplate}/gif', [TransitionTemplateController::class, 'gif'])->name('transition-templates.media.gif');

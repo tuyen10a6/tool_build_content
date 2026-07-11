@@ -63,7 +63,7 @@ class Scene extends Model
 
     public function scopeVisibleTo($query, User $user)
     {
-        return $user->isAdmin()
+        return $user->canReviewContent() || $user->isAdmin()
             ? $query
             : $query->where('created_by', $user->id);
     }

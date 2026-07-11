@@ -28,7 +28,7 @@ class UserController extends Controller
         User::create([
             ...$validated,
             'name' => $validated['full_name'],
-            'email' => $validated['username'].'@local.internal',
+            'email' => $validated['email'],
             'password' => $password['password'],
         ]);
 
@@ -80,10 +80,16 @@ class UserController extends Controller
                 'max:255',
                 Rule::unique('users', 'username')->ignore($user?->id),
             ],
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user?->id),
+            ],
             'full_name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'note' => ['nullable', 'string'],
-            'role' => ['required', Rule::in(['admin', 'user'])],
+            'role' => ['required', Rule::in(['admin', 'reviewer', 'user'])],
             'status' => ['required', Rule::in(['active', 'locked'])],
         ]);
     }

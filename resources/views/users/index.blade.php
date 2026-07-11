@@ -26,6 +26,10 @@
                         <input class="form-input" type="text" name="full_name" value="{{ old('full_name') }}">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input class="form-input" type="email" name="email" value="{{ old('email') }}">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Số điện thoại</label>
                         <input class="form-input" type="text" name="phone" value="{{ old('phone') }}">
                     </div>
@@ -38,6 +42,7 @@
                             <label class="form-label">Role</label>
                             <select class="form-input" name="role">
                                 <option value="user" @selected(old('role') === 'user')>User</option>
+                                <option value="reviewer" @selected(old('role') === 'reviewer')>Reviewer</option>
                                 <option value="admin" @selected(old('role') === 'admin')>Admin</option>
                             </select>
                         </div>
@@ -88,6 +93,10 @@
                                             <input class="form-input" type="text" name="full_name" value="{{ old('full_name', $user->full_name) }}">
                                         </div>
                                     </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Email</label>
+                                        <input class="form-input" type="email" name="email" value="{{ old('email', $user->email) }}">
+                                    </div>
                                     <div class="grid grid-2">
                                         <div class="form-group">
                                             <label class="form-label">Số điện thoại</label>
@@ -97,6 +106,7 @@
                                             <label class="form-label">Role</label>
                                             <select class="form-input" name="role">
                                                 <option value="user" @selected(old('role', $user->role) === 'user')>User</option>
+                                                <option value="reviewer" @selected(old('role', $user->role) === 'reviewer')>Reviewer</option>
                                                 <option value="admin" @selected(old('role', $user->role) === 'admin')>Admin</option>
                                             </select>
                                         </div>

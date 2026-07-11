@@ -50,7 +50,7 @@ class ExportController extends Controller
 
     public function scene(Scene $scene)
     {
-        $this->authorizeOwnership($scene);
+        $this->authorizeAdmin();
 
         $scene->load('content.category');
 
@@ -69,7 +69,7 @@ class ExportController extends Controller
 
     public function content(ContentItem $content)
     {
-        $this->authorizeOwnership($content);
+        $this->authorizeContentExport($content);
 
         $content->load(['category', 'scenes']);
 

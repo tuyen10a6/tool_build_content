@@ -17,7 +17,7 @@ class SceneController extends Controller
 {
     public function gif(Scene $scene): StreamedResponse
     {
-        $this->authorizeOwnership($scene);
+        $this->authorizeContentView($scene->content);
 
         abort_unless($scene->gif_path && Storage::disk('public')->exists($scene->gif_path), 404);
 
@@ -33,7 +33,7 @@ class SceneController extends Controller
 
     public function audio(Scene $scene): StreamedResponse
     {
-        $this->authorizeOwnership($scene);
+        $this->authorizeContentView($scene->content);
 
         abort_unless($scene->audio_path && Storage::disk('public')->exists($scene->audio_path), 404);
 
@@ -49,7 +49,7 @@ class SceneController extends Controller
 
     public function show(Scene $scene)
     {
-        $this->authorizeOwnership($scene);
+        $this->authorizeContentView($scene->content);
 
         $scene->load(['content.category', 'nextTransitionTemplate', 'transitionTemplate', 'fromScene', 'toScene']);
 
@@ -72,7 +72,7 @@ class SceneController extends Controller
 
     public function store(Request $request, ContentItem $content): RedirectResponse
     {
-        $this->authorizeOwnership($content);
+        $this->authorizeContentEdit($content);
 
         $validated = $request->validate(
             [
@@ -131,7 +131,7 @@ class SceneController extends Controller
 
     public function update(Request $request, Scene $scene): RedirectResponse
     {
-        $this->authorizeOwnership($scene);
+        $this->authorizeSceneEdit($scene);
 
         if ($scene->isTransition()) {
             return back()->with('status', 'Phân cảnh chuyển tiếp được quản lý từ mẫu chuyển tiếp và thứ tự phân cảnh chính.');
@@ -188,7 +188,7 @@ class SceneController extends Controller
 
     public function destroy(Scene $scene): RedirectResponse
     {
-        $this->authorizeOwnership($scene);
+        $this->authorizeSceneEdit($scene);
 
         $content = $scene->content;
 
@@ -213,7 +213,7 @@ class SceneController extends Controller
 
     public function duplicate(Scene $scene): RedirectResponse
     {
-        $this->authorizeOwnership($scene);
+        $this->authorizeSceneEdit($scene);
 
         if ($scene->isTransition()) {
             return back()->with('status', 'Không nhân bản trực tiếp phân cảnh chuyển tiếp. Hãy nhân bản phân cảnh chính hoặc dùng mẫu chuyển tiếp.');
