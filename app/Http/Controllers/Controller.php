@@ -53,7 +53,7 @@ class Controller extends BaseController
         }
 
         abort_unless(
-            $this->user()->role === 'user'
+            in_array($this->user()->role, ['user', 'reviewer'], true)
             && (int) $content->created_by === (int) $this->user()->id
             && $content->isEditableByOwner(),
             Response::HTTP_FORBIDDEN
@@ -81,7 +81,7 @@ class Controller extends BaseController
         }
 
         abort_unless(
-            $this->user()->role === 'user'
+            in_array($this->user()->role, ['user', 'reviewer'], true)
             && (int) $scene->created_by === (int) $this->user()->id
             && $scene->content
             && $scene->content->isEditableByOwner(),

@@ -18,9 +18,9 @@
         'completed' => 'status-pill-completed',
     ];
     $currentUser = auth()->user();
-    $canEditContent = $currentUser->isAdmin() || ($currentUser->role === 'user' && $content->isEditableByOwner() && (int) $content->created_by === (int) $currentUser->id);
+    $canEditContent = $currentUser->isAdmin() || (in_array($currentUser->role, ['user', 'reviewer'], true) && $content->isEditableByOwner() && (int) $content->created_by === (int) $currentUser->id);
     $canReviewContent = $currentUser->canReviewContent();
-    $canSubmitReview = $currentUser->role === 'user' && (int) $content->created_by === (int) $currentUser->id && in_array($content->approval_status, ['draft', 'needs_revision'], true);
+    $canSubmitReview = in_array($currentUser->role, ['user', 'reviewer'], true) && (int) $content->created_by === (int) $currentUser->id && in_array($content->approval_status, ['draft', 'needs_revision'], true);
     $shouldOpenSceneModal = $errors->hasAny([
         'video',
         'scene_text',
@@ -1062,6 +1062,14 @@
             const submitter = event.submitter;
 
             if (submitter instanceof HTMLButtonElement && submitter !== contentReviewSubmit) {
+                if (submitter.name && !contentReviewForm.querySelector(`input[type="hidden"][name="${submitter.name}"]`)) {
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = submitter.name;
+                    hiddenInput.value = submitter.value;
+                    contentReviewForm.appendChild(hiddenInput);
+                }
+
                 const originalText = submitter.dataset.originalText || submitter.textContent || '';
                 submitter.dataset.originalText = originalText;
                 submitter.disabled = true;

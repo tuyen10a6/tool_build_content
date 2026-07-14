@@ -82,6 +82,43 @@ class ContentReviewWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_reviewer_can_mark_pending_content_as_approved(): void
+    {
+        $reviewer = User::factory()->create(['role' => 'reviewer']);
+        $owner = User::factory()->create(['role' => 'user']);
+        $content = $this->createContentForUser($owner, [
+            'approval_status' => 'pending_review',
+        ]);
+
+        $response = $this->actingAs($reviewer)->post(route('contents.review', $content), [
+            'approval_status' => 'approved',
+            'review_comment' => 'Noi dung dat yeu cau',
+        ]);
+
+        $response->assertRedirect(route('contents.show', $content));
+        $this->assertDatabaseHas('content_items', [
+            'id' => $content->id,
+            'approval_status' => 'approved',
+            'review_comment' => 'Noi dung dat yeu cau',
+        ]);
+    }
+
+    public function test_reviewer_can_submit_owned_content_for_review(): void
+    {
+        $reviewer = User::factory()->create(['role' => 'reviewer']);
+        $content = $this->createContentForUser($reviewer, [
+            'approval_status' => 'draft',
+        ]);
+
+        $response = $this->actingAs($reviewer)->post(route('contents.submit-review', $content));
+
+        $response->assertRedirect(route('contents.show', $content));
+        $this->assertDatabaseHas('content_items', [
+            'id' => $content->id,
+            'approval_status' => 'pending_review',
+        ]);
+    }
+
     private function createContentForUser(User $user, array $overrides = []): ContentItem
     {
         $category = Category::create([

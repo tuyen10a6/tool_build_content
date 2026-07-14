@@ -35,50 +35,32 @@
         </div>
 
         <div class="grid grid-2" style="margin-top: 20px;">
-            @if (auth()->user()->role === 'user')
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Tạo nội dung mới</h3>
-                    </div>
-                    <form method="POST" action="{{ route('contents.store') }}">
-                        @csrf
-                        <div class="form-group">
-                            <label class="form-label">Danh mục</label>
-                            <select class="form-input" name="category_id">
-                                <option value="">Chọn danh mục</option>
-                                @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>{{ $category->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Tên nội dung</label>
-                            <input class="form-input" type="text" name="name" value="{{ old('name') }}">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Mô tả</label>
-                            <textarea class="form-input" name="description">{{ old('description') }}</textarea>
-                        </div>
-                        <button class="btn btn-primary" type="submit">+ Tạo nội dung</button>
-                    </form>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Tạo nội dung mới</h3>
                 </div>
-            @else
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Quyền kiểm duyệt</h3>
+                <form method="POST" action="{{ route('contents.store') }}">
+                    @csrf
+                    <div class="form-group">
+                        <label class="form-label">Danh mục</label>
+                        <select class="form-input" name="category_id">
+                            <option value="">Chọn danh mục</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}" @selected(old('category_id') == $category->id)>{{ $category->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div class="stack">
-                        <div class="list-item">
-                            <div class="list-item-title">{{ auth()->user()->isAdmin() ? 'Admin' : 'Reviewer' }}</div>
-                            <div class="list-item-desc">
-                                {{ auth()->user()->isAdmin()
-                                    ? 'Bạn có thể xem toàn bộ nội dung, duyệt content và xuất folder.'
-                                    : 'Bạn có thể xem, preview, nhận xét và cập nhật kết quả duyệt. Reviewer không được sửa trực tiếp content/scene/media.' }}
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label">Tên nội dung</label>
+                        <input class="form-input" type="text" name="name" value="{{ old('name') }}">
                     </div>
-                </div>
-            @endif
+                    <div class="form-group">
+                        <label class="form-label">Mô tả</label>
+                        <textarea class="form-input" name="description">{{ old('description') }}</textarea>
+                    </div>
+                    <button class="btn btn-primary" type="submit">+ Tạo nội dung</button>
+                </form>
+            </div>
 
             <div class="card">
                 <div class="card-header">
@@ -98,7 +80,7 @@
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label class="form-label">User tạo</label>
-                            @if (auth()->user()->isAdmin())
+                            @if (auth()->user()->canReviewContent())
                                 <select class="form-input" name="user_ids[]" multiple size="5">
                                     @foreach ($users as $user)
                                         <option value="{{ $user->id }}" @selected(in_array($user->id, $selectedUserIds, true))>{{ $user->display_name }}</option>

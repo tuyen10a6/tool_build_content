@@ -47,6 +47,54 @@ class ContentReviewAuthorizationTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_reviewer_sees_all_contents_and_creator_filter_options(): void
+    {
+        $reviewer = User::factory()->create(['role' => 'reviewer']);
+        $ownerA = User::factory()->create([
+            'role' => 'user',
+            'full_name' => 'Nguyen Van A',
+            'name' => 'Nguyen Van A',
+        ]);
+        $ownerB = User::factory()->create([
+            'role' => 'user',
+            'full_name' => 'Tran Thi B',
+            'name' => 'Tran Thi B',
+        ]);
+
+        $contentA = $this->createContentForUser($ownerA, ['name' => 'Story A']);
+        $contentB = $this->createContentForUser($ownerB, ['name' => 'Story B']);
+
+        $response = $this->actingAs($reviewer)->get(route('contents.index'));
+
+        $response->assertOk();
+        $response->assertSee('Story A');
+        $response->assertSee('Story B');
+        $response->assertSee($ownerA->display_name);
+        $response->assertSee($ownerB->display_name);
+        $response->assertSee(route('contents.show', $contentA));
+        $response->assertSee(route('contents.show', $contentB));
+    }
+
+    public function test_reviewer_can_edit_own_content_while_draft(): void
+    {
+        $reviewer = User::factory()->create(['role' => 'reviewer']);
+        $content = $this->createContentForUser($reviewer, [
+            'approval_status' => 'draft',
+        ]);
+
+        $response = $this->actingAs($reviewer)->put(route('contents.update', $content), [
+            'category_id' => $content->category_id,
+            'name' => 'Reviewer updated content',
+            'description' => 'Updated by reviewer',
+        ]);
+
+        $response->assertRedirect(route('contents.show', $content));
+        $this->assertDatabaseHas('content_items', [
+            'id' => $content->id,
+            'name' => 'Reviewer updated content',
+        ]);
+    }
+
     private function createContentForUser(User $user, array $overrides = []): ContentItem
     {
         $category = Category::create([

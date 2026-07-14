@@ -14,7 +14,7 @@ class ContentController extends Controller
 {
     public function index(Request $request): View
     {
-        $selectedUserIds = $this->user()->isAdmin()
+        $selectedUserIds = $this->user()->canReviewContent()
             ? collect($request->input('user_ids', []))->filter()->map(fn ($value) => (int) $value)->values()->all()
             : [$this->user()->id];
         $fromDate = $request->string('from_date')->toString();
@@ -34,7 +34,7 @@ class ContentController extends Controller
         return view('contents.index', [
             'categories' => Category::orderBy('name')->get(),
             'contents' => $contentsQuery->get(),
-            'users' => $this->user()->isAdmin() ? \App\Models\User::query()->orderBy('full_name')->get() : collect([$this->user()]),
+            'users' => $this->user()->canReviewContent() ? \App\Models\User::query()->orderBy('full_name')->get() : collect([$this->user()]),
             'selectedUserIds' => $selectedUserIds,
             'fromDate' => $fromDate,
             'toDate' => $toDate,
