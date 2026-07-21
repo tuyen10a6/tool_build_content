@@ -53,7 +53,7 @@
         .form-input::placeholder { color: var(--text-muted); }
         .form-input:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18); }
         textarea.form-input { min-height: 108px; resize: vertical; }
-        .preview-screen { width: 100%; max-width: 800px; aspect-ratio: 5 / 3; background: var(--preview-bg); color: var(--preview-fg); border-radius: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0 auto; transition: background 0.2s ease, color 0.2s ease; }
+        .preview-screen { width: 100%; max-width: 800px; aspect-ratio: 3 / 2; background: var(--preview-bg); color: var(--preview-fg); border-radius: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0 auto; transition: background 0.2s ease, color 0.2s ease; }
         .preview-screen img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .preview-controls { display: flex; justify-content: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
         .scene-item { display: flex; justify-content: space-between; gap: 14px; align-items: center; margin-bottom: 10px; }

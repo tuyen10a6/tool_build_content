@@ -146,24 +146,36 @@ class ExportController extends Controller
 
     private function storyMarkdown(ContentItem $content, $scenes, string $folder): string
     {
-        $lines = [];
+        $segments = [];
 
         foreach ($scenes as $scene) {
             $text = trim((string) $scene->scene_text);
-
-            if ($text !== '') {
-                $lines[] = $text.' /';
-            }
+            $gifFileName = null;
 
             if ($scene->gif_path && Storage::disk('public')->exists($scene->gif_path)) {
                 $gifFileName = $this->exportGifFileName($content, $scene);
-                $lines[] = sprintf('[%s/%s](./%s).', $folder, $gifFileName, $gifFileName);
             }
 
-            $lines[] = '';
+            if ($text === '' && ! $gifFileName) {
+                continue;
+            }
+
+            $segment = $text;
+
+            if ($gifFileName) {
+                $segment = trim($segment.' /'.$folder.'/'.$gifFileName, ' ');
+            }
+
+            if ($segment !== '' && ! Str::endsWith($segment, ['.', '!', '?'])) {
+                $segment .= '.';
+            } elseif ($gifFileName && ! Str::endsWith($segment, '.')) {
+                $segment .= '.';
+            }
+
+            $segments[] = $segment;
         }
 
-        return rtrim(implode("\n", $lines));
+        return trim(implode(' ', array_filter($segments)));
     }
 
     private function safeName(string $value): string

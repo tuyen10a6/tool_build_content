@@ -151,7 +151,7 @@
             <div class="header" style="margin-bottom: 0;">
                 <div>
                     <h2 class="page-title">Xem trước</h2>
-                    <p class="muted">Màn hình preview 800x480 nền đen để test nhanh content hoặc một scene riêng lẻ.</p>
+                    <p class="muted">Màn hình preview tỷ lệ 3:2 để test nhanh content hoặc một scene riêng lẻ.</p>
                 </div>
             </div>
             <div class="grid grid-2" style="margin-top: 20px;">
