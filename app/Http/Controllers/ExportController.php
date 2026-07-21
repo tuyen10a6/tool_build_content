@@ -166,12 +166,6 @@ class ExportController extends Controller
                 $segment = trim($segment.' /'.$folder.'/'.$gifFileName, ' ');
             }
 
-            if ($segment !== '' && ! Str::endsWith($segment, ['.', '!', '?'])) {
-                $segment .= '.';
-            } elseif ($gifFileName && ! Str::endsWith($segment, '.')) {
-                $segment .= '.';
-            }
-
             $segments[] = $segment;
         }
 
