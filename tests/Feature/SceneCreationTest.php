@@ -58,6 +58,38 @@ class SceneCreationTest extends TestCase
         });
     }
 
+    public function test_user_can_create_scene_with_png_source_media_and_dispatch_media_job(): void
+    {
+        Queue::fake();
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $content = $this->createContentForUser($user);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('scenes.store', $content), [
+                'name' => 'Scene image source',
+                'scene_text' => 'Ảnh nguồn để convert',
+                'video' => UploadedFile::fake()->image('scene-source.png'),
+            ]);
+
+        $response->assertRedirect(route('contents.show', $content));
+
+        $scene = Scene::query()->where('name', 'Scene image source')->first();
+
+        $this->assertNotNull($scene);
+        $this->assertSame('pending', $scene->media_status);
+        $this->assertNotNull($scene->source_video_path);
+        $this->assertSame('scene-source.png', $scene->source_video_original_name);
+        $this->assertSame(3, $scene->duration_seconds);
+        Storage::disk('local')->assertExists($scene->source_video_path);
+        Queue::assertPushed(ProcessSceneMediaJob::class, function (ProcessSceneMediaJob $job) use ($scene) {
+            return $job->sceneId === $scene->id;
+        });
+    }
+
     public function test_scene_media_job_completes_and_cleans_up_temp_video(): void
     {
         Storage::fake('local');
@@ -299,6 +331,51 @@ class SceneCreationTest extends TestCase
         $this->assertNull($scene->media_error);
         $this->assertSame('old.gif', $scene->gif_original_name);
         $this->assertSame('old.mp3', $scene->audio_original_name);
+        Queue::assertPushed(ProcessSceneMediaJob::class, function (ProcessSceneMediaJob $job) use ($scene) {
+            return $job->sceneId === $scene->id;
+        });
+    }
+
+    public function test_updating_scene_accepts_png_source_media_and_keeps_existing_duration_when_image_has_no_duration(): void
+    {
+        Queue::fake();
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $content = $this->createContentForUser($user);
+
+        $scene = Scene::create([
+            'content_item_id' => $content->id,
+            'scene_type' => 'main',
+            'name' => 'Scene image update',
+            'scene_text' => 'old text',
+            'duration_seconds' => 8,
+            'position' => 1,
+            'sort_order' => 1,
+            'position_label' => '1',
+            'created_by' => $user->id,
+            'created_by_name' => $user->display_name,
+            'media_status' => 'completed',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->put(route('scenes.update', $scene), [
+                'name' => 'Scene image update',
+                'scene_text' => 'updated text',
+                'position' => 1,
+                'video' => UploadedFile::fake()->image('scene-update.png'),
+            ]);
+
+        $response->assertRedirect(route('scenes.show', $scene));
+
+        $scene->refresh();
+
+        $this->assertSame('pending', $scene->media_status);
+        $this->assertSame('scene-update.png', $scene->source_video_original_name);
+        $this->assertSame(8, $scene->duration_seconds);
+        Storage::disk('local')->assertExists($scene->source_video_path);
         Queue::assertPushed(ProcessSceneMediaJob::class, function (ProcessSceneMediaJob $job) use ($scene) {
             return $job->sceneId === $scene->id;
         });

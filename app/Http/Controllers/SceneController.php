@@ -78,7 +78,7 @@ class SceneController extends Controller
             [
                 'name' => ['required', 'string', 'max:255'],
                 'scene_text' => ['required', 'string'],
-                'video' => ['required', 'file', 'mimetypes:video/mp4', 'mimes:mp4'],
+                'video' => ['required', 'file', 'mimetypes:video/mp4,image/jpeg,image/png', 'mimes:mp4,jpg,jpeg,png'],
                 'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
                 'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
                 'transition_name' => ['nullable', 'string', 'max:255'],
@@ -88,8 +88,8 @@ class SceneController extends Controller
                 'transition_duration_seconds' => ['nullable', 'integer', 'min:1', 'max:3600'],
             ],
             [
-                'video.mimes' => 'Chỉ hỗ trợ file MP4.',
-                'video.mimetypes' => 'Chỉ hỗ trợ file MP4.',
+                'video.mimes' => 'Chỉ hỗ trợ file MP4, JPG hoặc PNG.',
+                'video.mimetypes' => 'Chỉ hỗ trợ file MP4, JPG hoặc PNG.',
             ]
         );
 
@@ -141,12 +141,12 @@ class SceneController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'scene_text' => ['required', 'string'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'video' => ['nullable', 'file', 'mimetypes:video/mp4', 'mimes:mp4'],
+            'video' => ['nullable', 'file', 'mimetypes:video/mp4,image/jpeg,image/png', 'mimes:mp4,jpg,jpeg,png'],
             'position' => ['required', 'integer', 'min:1'],
             'next_transition_template_id' => ['nullable', 'exists:transition_templates,id'],
         ], [
-            'video.mimes' => 'Chỉ hỗ trợ file MP4.',
-            'video.mimetypes' => 'Chỉ hỗ trợ file MP4.',
+            'video.mimes' => 'Chỉ hỗ trợ file MP4, JPG hoặc PNG.',
+            'video.mimetypes' => 'Chỉ hỗ trợ file MP4, JPG hoặc PNG.',
         ]);
 
         $content = $scene->content;

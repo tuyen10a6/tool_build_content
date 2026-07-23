@@ -91,9 +91,9 @@
                         <input class="form-input" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Video MP4 mới</label>
-                        <input class="form-input" type="file" name="video" accept=".mp4,video/mp4">
-                        <div class="muted" style="margin-top: 8px;">Nếu upload video mới, hệ thống sẽ xử lý nền để convert lại sang GIF và thay thế GIF đang hiển thị ở khung xem trước.</div>
+                        <label class="form-label">Video hoặc ảnh nguồn mới</label>
+                        <input class="form-input" type="file" name="video" accept=".mp4,.jpg,.jpeg,.png,video/mp4,image/jpeg,image/png">
+                        <div class="muted" style="margin-top: 8px;">Hỗ trợ MP4, JPG, PNG. Nếu upload file mới, hệ thống sẽ xử lý nền để tạo lại GIF và thay thế GIF đang hiển thị ở khung xem trước.</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Audio hiện tại</label>

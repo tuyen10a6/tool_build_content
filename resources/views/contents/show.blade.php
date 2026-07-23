@@ -374,8 +374,9 @@
                     <textarea class="form-input" name="scene_text" rows="5" placeholder="Nhập nội dung text của phân cảnh...">{{ old('scene_text') }}</textarea>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Video MP4</label>
-                    <input class="form-input" type="file" name="video" accept=".mp4,video/mp4" required>
+                    <label class="form-label">Video hoặc ảnh nguồn</label>
+                    <input class="form-input" type="file" name="video" accept=".mp4,.jpg,.jpeg,.png,video/mp4,image/jpeg,image/png" required>
+                    <div class="muted" style="margin-top: 8px;">Hỗ trợ MP4, JPG, PNG. Hệ thống sẽ dùng file này để tạo GIF.</div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Ảnh minh hoạ (không bắt buộc)</label>

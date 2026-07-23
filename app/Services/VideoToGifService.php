@@ -31,7 +31,7 @@ class VideoToGifService
     public function convertStoredVideoToGif(string $storedPath, ?string $originalName = null): array
     {
         if (! Storage::disk('local')->exists($storedPath)) {
-            throw new VideoToGifException('Không tìm thấy video nguồn để chuyển đổi sang GIF.');
+            throw new VideoToGifException('Không tìm thấy media nguồn để chuyển đổi sang GIF.');
         }
 
         return $this->convertFromStoredLocalPath(
@@ -47,7 +47,7 @@ class VideoToGifService
         $timeout = (int) config('services.video_to_gif.timeout', 30);
 
         if ($apiUrl === '' || $apiKey === '') {
-            throw new VideoToGifException('Chưa cấu hình API chuyển đổi Video sang GIF.');
+            throw new VideoToGifException('Chưa cấu hình API chuyển đổi media sang GIF.');
         }
 
         $absoluteTempPath = Storage::disk('local')->path($storedPath);
@@ -66,7 +66,7 @@ class VideoToGifService
             $status = is_array($payload) ? ($payload['status'] ?? null) : null;
 
             if ($status !== 'success' || ! is_string($gifUrl) || $gifUrl === '') {
-                throw new VideoToGifException('Không thể chuyển đổi Video sang GIF. Vui lòng thử lại.');
+                throw new VideoToGifException('Không thể chuyển đổi media sang GIF. Vui lòng thử lại.');
             }
 
             $gifResponse = $this->http
@@ -88,7 +88,7 @@ class VideoToGifService
         } catch (ConnectionException|RequestException $exception) {
             report($exception);
 
-            throw new VideoToGifException('Không thể chuyển đổi Video sang GIF. Kiểm tra lại VIDEO_TO_GIF_API_URL hoặc thử lại.', previous: $exception);
+            throw new VideoToGifException('Không thể chuyển đổi media sang GIF. Kiểm tra lại VIDEO_TO_GIF_API_URL hoặc thử lại.', previous: $exception);
         }
     }
 
@@ -132,7 +132,7 @@ class VideoToGifService
             throw $lastException;
         }
 
-        throw new VideoToGifException('Không thể kết nối API chuyển đổi Video sang GIF.');
+        throw new VideoToGifException('Không thể kết nối API chuyển đổi media sang GIF.');
     }
 
     private function candidateApiUrls(string $apiUrl): array
@@ -158,7 +158,7 @@ class VideoToGifService
         $parts = parse_url($apiUrl);
 
         if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
-            throw new VideoToGifException('URL API chuyển đổi Video sang GIF không hợp lệ.');
+            throw new VideoToGifException('URL API chuyển đổi media sang GIF không hợp lệ.');
         }
 
         $base = $parts['scheme'].'://'.$parts['host'];

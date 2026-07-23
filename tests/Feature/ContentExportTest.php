@@ -112,10 +112,12 @@ class ContentExportTest extends TestCase
 
         $story = $zip->getFromName('tranquoctoan/story.md');
         $this->assertNotFalse($story);
-        $this->assertStringContainsString('Doan van thu nhat /', $story);
-        $this->assertStringContainsString('[tranquoctoan/TQT1.GIF](./TQT1.GIF)', $story);
-        $this->assertStringContainsString('Doan van thu hai /', $story);
-        $this->assertStringContainsString('[tranquoctoan/TQT2.GIF](./TQT2.GIF)', $story);
+        $this->assertStringContainsString('Doan van thu nhat /tranquoctoan/TQT1.GIF', $story);
+        $this->assertStringContainsString('Doan van thu hai /tranquoctoan/TQT2.GIF', $story);
+        $this->assertStringNotContainsString('/tranquoctoan/TQT1.GIF.', $story);
+        $this->assertStringNotContainsString('/tranquoctoan/TQT2.GIF.', $story);
+        $this->assertStringNotContainsString('[tranquoctoan/TQT1.GIF](./TQT1.GIF)', $story);
+        $this->assertStringNotContainsString('[tranquoctoan/TQT2.GIF](./TQT2.GIF)', $story);
         $this->assertStringNotContainsString('content.md', $story);
         $this->assertStringNotContainsString('transition', strtolower($story));
 
