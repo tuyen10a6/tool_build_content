@@ -651,6 +651,19 @@
                 primeSceneMedia(state.sequence[state.index - 1] || null);
             };
 
+            const waitForNextPaint = () => new Promise((resolve) => {
+                requestAnimationFrame(() => requestAnimationFrame(resolve));
+            });
+
+            const revealLoadedImage = async (scene) => {
+                placeholderElement.style.display = 'none';
+                imageElement.classList.add('is-visible');
+                await waitForNextPaint();
+                return currentScene()?.gif_url === scene.gif_url
+                    && imageElement.classList.contains('is-visible')
+                    && imageElement.getAttribute('src') === scene.gif_url;
+            };
+
             const showSceneImage = async (scene) => {
                 if (isSceneProcessing(scene)) {
                     imageElement.classList.remove('is-visible');
@@ -658,7 +671,7 @@
                     imageElement.alt = '';
                     placeholderElement.innerHTML = `${scene?.name || emptyMessage}<br>Đang xử lý media...`;
                     placeholderElement.style.display = 'flex';
-                    return;
+                    return false;
                 }
 
                 if (!scene?.gif_url) {
@@ -667,14 +680,14 @@
                     imageElement.alt = '';
                     placeholderElement.innerHTML = `${scene?.name || emptyMessage}<br>${scene ? 'Chưa có GIF' : ''}`.trim();
                     placeholderElement.style.display = 'flex';
-                    return;
+                    return false;
                 }
 
                 primeSceneMedia(scene);
                 const loadedImage = await state.imageCache.get(scene.gif_url);
 
                 if (currentScene()?.gif_url !== scene.gif_url) {
-                    return;
+                    return false;
                 }
 
                 if (!loadedImage) {
@@ -682,19 +695,40 @@
                     imageElement.removeAttribute('src');
                     placeholderElement.innerHTML = `${scene.name}<br>Không tải được GIF`;
                     placeholderElement.style.display = 'flex';
-                    return;
+                    return false;
                 }
 
-                placeholderElement.style.display = 'none';
-                imageElement.classList.remove('is-visible');
+                const imageLoaded = await new Promise((resolve) => {
+                    let settled = false;
+                    const finish = (loaded) => {
+                        if (settled) {
+                            return;
+                        }
 
-                requestAnimationFrame(() => {
+                        settled = true;
+                        imageElement.onload = null;
+                        imageElement.onerror = null;
+                        resolve(loaded);
+                    };
+
+                    imageElement.onload = async () => {
+                        finish(await revealLoadedImage(scene));
+                    };
+
+                    imageElement.onerror = () => {
+                        finish(false);
+                    };
+
+                    imageElement.classList.remove('is-visible');
                     imageElement.src = scene.gif_url;
                     imageElement.alt = scene.name;
-                    requestAnimationFrame(() => {
-                        imageElement.classList.add('is-visible');
-                    });
+
+                    if (imageElement.complete && imageElement.naturalWidth > 0) {
+                        revealLoadedImage(scene).then(finish);
+                    }
                 });
+
+                return imageLoaded;
             };
 
             const clearPlayback = () => {
@@ -787,7 +821,7 @@
                 renderCurrentScene(true);
             };
 
-            const renderCurrentScene = (autoplay = false) => {
+            const renderCurrentScene = async (autoplay = false) => {
                 const scene = currentScene();
 
                 if (!scene) {
@@ -810,16 +844,28 @@
 
                 clearPlayback();
                 primeNearbyScenes();
-                showSceneImage(scene);
+                const isSceneVisible = await showSceneImage(scene);
                 renderSequenceList();
 
+                if (currentScene() !== scene) {
+                    return;
+                }
+
                 if (!autoplay) {
+                    return;
+                }
+
+                if (!state.playing) {
                     return;
                 }
 
                 if (isSceneProcessing(scene)) {
                     state.startedAt = Date.now();
                     state.timer = setTimeout(() => advanceScene(), state.remainingMs || (scene.duration_seconds || 3) * 1000);
+                    return;
+                }
+
+                if (!isSceneVisible) {
                     return;
                 }
 
