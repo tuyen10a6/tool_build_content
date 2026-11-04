@@ -31,6 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'ffmpeg' => [
+        'binary' => env('FFMPEG_BINARY', 'ffmpeg'),
+    ],
+
     'video_to_gif' => [
         'url' => env('VIDEO_TO_GIF_API_URL'),
         'key' => env('VIDEO_TO_GIF_API_KEY'),

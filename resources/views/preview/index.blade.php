@@ -4,6 +4,14 @@
 
 @section('content')
     <style>
+        #preview-screen {
+            width: 320px;
+            max-width: 100%;
+            height: 240px;
+            aspect-ratio: auto;
+            margin: 0 auto;
+        }
+
         .preview-stage {
             position: relative;
             width: 100%;

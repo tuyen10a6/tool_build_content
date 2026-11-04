@@ -81,8 +81,9 @@ class ContentExportTest extends TestCase
             'created_by_name' => $user->display_name,
         ]);
 
-        Storage::disk('public')->put($sceneOne->gif_path, 'gif-one');
-        Storage::disk('public')->put($sceneTwo->gif_path, 'gif-two');
+        $sampleGif = file_get_contents(__DIR__.'/../Fixtures/sample-480x320.gif');
+        Storage::disk('public')->put($sceneOne->gif_path, $sampleGif);
+        Storage::disk('public')->put($sceneTwo->gif_path, $sampleGif);
         Storage::disk('public')->put('scenes/gifs/transition.gif', 'gif-transition');
 
         $response = $this
@@ -121,8 +122,14 @@ class ContentExportTest extends TestCase
         $this->assertStringNotContainsString('content.md', $story);
         $this->assertStringNotContainsString('transition', strtolower($story));
 
-        $this->assertSame('gif-one', $zip->getFromName('tranquoctoan/TQT1.GIF'));
-        $this->assertSame('gif-two', $zip->getFromName('tranquoctoan/TQT2.GIF'));
+        foreach (['tranquoctoan/TQT1.GIF', 'tranquoctoan/TQT2.GIF'] as $gifEntry) {
+            $exportedGif = $zip->getFromName($gifEntry);
+            $this->assertNotFalse($exportedGif);
+
+            $size = getimagesizefromstring($exportedGif);
+            $this->assertNotFalse($size);
+            $this->assertSame([320, 240], [$size[0], $size[1]]);
+        }
 
         $zip->close();
     }

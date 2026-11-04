@@ -6,6 +6,7 @@ use App\Models\ContentItem;
 use App\Models\ExportLog;
 use App\Models\Scene;
 use App\Models\User;
+use App\Services\GifResizeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -13,6 +14,10 @@ use ZipArchive;
 
 class ExportController extends Controller
 {
+    private const EXPORT_GIF_WIDTH = 320;
+
+    private const EXPORT_GIF_HEIGHT = 240;
+
     public function index(Request $request)
     {
         $selectedUserIds = $this->user()->isAdmin()
@@ -111,7 +116,7 @@ class ExportController extends Controller
     private function addMedia(ZipArchive $zip, string $folder, Scene $scene): void
     {
         if ($scene->gif_path && Storage::disk('public')->exists($scene->gif_path)) {
-            $zip->addFromString($folder.'/'.($scene->gif_original_name ?: basename($scene->gif_path)), Storage::disk('public')->get($scene->gif_path));
+            $zip->addFromString($folder.'/'.($scene->gif_original_name ?: basename($scene->gif_path)), $this->exportGifContents($scene));
         }
 
         if ($scene->audio_path && Storage::disk('public')->exists($scene->audio_path)) {
@@ -125,7 +130,19 @@ class ExportController extends Controller
             return;
         }
 
-        $zip->addFromString($folder.'/'.$fileName, Storage::disk('public')->get($scene->gif_path));
+        $zip->addFromString($folder.'/'.$fileName, $this->exportGifContents($scene));
+    }
+
+    /**
+     * GIF khi xuất được đổi về 320x240 px (giữ tỉ lệ, letterbox).
+     */
+    private function exportGifContents(Scene $scene): string
+    {
+        return app(GifResizeService::class)->resizeToFit(
+            Storage::disk('public')->path($scene->gif_path),
+            self::EXPORT_GIF_WIDTH,
+            self::EXPORT_GIF_HEIGHT,
+        );
     }
 
     private function sceneMarkdown(Scene $scene): string
